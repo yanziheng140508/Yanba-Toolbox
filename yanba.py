@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-闫巴工具箱 YBv1.0 — 现代动画版
+闫巴工具箱 YBv1.1 — 现代动画版
 纯本地运行 · 全局异常保护 · JSON持久化 · 平滑交互动画
 """
 
@@ -286,7 +286,7 @@ class DataManager:
 
 class RoundedButton(tk.Canvas):
     def __init__(self, master, text='', command=None, bg=Theme.PRIMARY,
-                 fg='white', width=120, height=40, radius=18, **kwargs):
+                 fg='white', width=84, height=24, radius=6, **kwargs):
         super().__init__(master, width=width, height=height,
                          highlightthickness=0, bg=master['bg'], **kwargs)
         self._text = text
@@ -360,7 +360,7 @@ class RoundedButton(tk.Canvas):
 
 
 class RoundedFrame(tk.Canvas):
-    def __init__(self, master, bg=None, radius=18, **kwargs):
+    def __init__(self, master, bg=None, radius=6, **kwargs):
         self._bg = bg or Theme.CARD
         self._radius = radius
         self._items = []
@@ -392,7 +392,7 @@ class RoundedFrame(tk.Canvas):
 
 
 class RoundedEntry(tk.Frame):
-    def __init__(self, master, bg=None, fg=None, radius=15, **kwargs):
+    def __init__(self, master, bg=None, fg=None, radius=5, **kwargs):
         self._bg = bg or Theme.CARD
         self._radius = radius
         self._canvas = tk.Canvas(master, bg=master['bg'], highlightthickness=0, bd=0)
@@ -418,7 +418,7 @@ class RoundedEntry(tk.Frame):
         self._canvas.create_oval(w-2*r, h-2*r, w, h, fill=self._bg, outline='')
         self._canvas.create_rectangle(r, 0, w-r, h, fill=self._bg, outline='')
         self._canvas.create_rectangle(0, r, w, h-r, fill=self._bg, outline='')
-        self._entry.place_configure(width=w-14, height=h-6)
+        self._entry.place_configure(width=w-10, height=h-4)
 
     def _on_resize(self, event):
         self._draw()
@@ -492,11 +492,11 @@ class DeciderPage(tk.Frame):
         brow = tk.Frame(parent, bg=Theme.CARD)
         brow.pack(pady=6)
         RoundedButton(brow, text="💾 保存", command=self._save_options,
-                       bg=Theme.SUCCESS, width=90, height=32).pack(side='left', padx=5)
+                       bg=Theme.SUCCESS, width=76, height=26).pack(side='left', padx=5)
         RoundedButton(brow, text="🎯 随机选一个", command=self._pick_one,
-                       bg=Theme.ACCENT, width=120, height=32).pack(side='left', padx=5)
+                       bg=Theme.ACCENT, width=84, height=26).pack(side='left', padx=5)
         RoundedButton(brow, text="🎲 随机选N个", command=self._pick_n,
-                       bg=Theme.PRIMARY, width=120, height=32).pack(side='left', padx=5)
+                       bg=Theme.PRIMARY, width=84, height=26).pack(side='left', padx=5)
         rc = tk.Frame(parent, bg='#FFF8E1')
         rc.pack(fill='x', padx=15, pady=(5, 12))
         tk.Label(rc, text="结果", font=Theme.FONT_SMALL, bg='#FFF8E1',
@@ -574,9 +574,9 @@ class DeciderPage(tk.Frame):
         brow = tk.Frame(parent, bg=Theme.CARD)
         brow.pack(pady=6)
         RoundedButton(brow, text="💾 保存签文", command=self._save_lots,
-                       bg=Theme.SUCCESS, width=110, height=32).pack(side='left', padx=5)
+                       bg=Theme.SUCCESS, width=92, height=26).pack(side='left', padx=5)
         RoundedButton(brow, text="🎋 抽签", command=self._draw_lot_anim,
-                       bg='#E91E63', width=110, height=34).pack(side='left', padx=5)
+                       bg='#E91E63', width=92, height=26).pack(side='left', padx=5)
         rc = tk.Frame(parent, bg='#FCE4EC')
         rc.pack(fill='x', padx=15, pady=(5, 12))
         self.lot_result = tk.Label(rc, text="心诚则灵",
@@ -625,7 +625,7 @@ class DeciderPage(tk.Frame):
         c = tk.Frame(parent, bg=Theme.CARD)
         c.pack(expand=True, fill='both')
 
-        self.coin_canvas = tk.Canvas(c, width=220, height=150,
+        self.coin_canvas = tk.Canvas(c, width=160, height=110,
                                       bg=Theme.CARD, highlightthickness=0)
         self.coin_canvas.pack(pady=(15, 5))
         self._draw_coin_canvas('idle')
@@ -636,7 +636,7 @@ class DeciderPage(tk.Frame):
         self.coin_label.pack(pady=5)
         RoundedButton(c, text="🪙 抛 硬 币", command=self._flip_coin_anim,
                        bg=Theme.WARNING, fg='#333',
-                       width=150, height=42).pack(pady=12)
+                       width=84, height=26).pack(pady=12)
         self.coin_stats = tk.Label(c, text="正面: 0 次  |  反面: 0 次",
                                     font=Theme.FONT_SMALL, bg=Theme.CARD,
                                     fg=Theme.TEXT_MUTED)
@@ -645,9 +645,9 @@ class DeciderPage(tk.Frame):
 
     def _draw_coin_canvas(self, state):
         self.coin_canvas.delete('all')
-        cx, cy = 110, 75
-        r_outer = 55
-        r_inner = 48
+        cx, cy = 80, 55
+        r_outer = 40
+        r_inner = 34
         if state == 'idle':
             # 3D coin appearance with rim and shine
             self.coin_canvas.create_oval(cx - r_outer, cy - r_outer,
@@ -657,14 +657,14 @@ class DeciderPage(tk.Frame):
                                           cx + r_inner, cy + r_inner,
                                           fill='#FFD700', outline='#DAA520', width=2)
             # Inner circle decoration
-            self.coin_canvas.create_oval(cx - 35, cy - 35, cx + 35, cy + 35,
+            self.coin_canvas.create_oval(cx - 25, cy - 25, cx + 25, cy + 25,
                                           outline='#DAA520', width=1)
             # Shine highlight
-            self.coin_canvas.create_arc(cx - 40, cy - 42, cx + 40, cy + 20,
+            self.coin_canvas.create_arc(cx - 28, cy - 30, cx + 28, cy + 14,
                                          start=200, extent=100,
                                          style='arc', outline='#FFFFFF', width=2)
             self.coin_canvas.create_text(cx, cy + 2, text="正 反",
-                                           font=('Microsoft YaHei', 16, 'bold'),
+                                           font=('Microsoft YaHei', 12, 'bold'),
                                            fill='#8B6914')
         elif state == 'flip1':
             # Side view - thin ellipse
@@ -672,7 +672,7 @@ class DeciderPage(tk.Frame):
                                           cx + r_outer * 0.25, cy + r_outer,
                                           fill='#DAA520', outline='#8B6914', width=2)
             self.coin_canvas.create_text(cx, cy, text="!",
-                                           font=('Arial', 24, 'bold'),
+                                           font=('Arial', 18, 'bold'),
                                            fill='#5D4E37')
         elif state == 'flip2':
             # Almost edge-on
@@ -688,17 +688,17 @@ class DeciderPage(tk.Frame):
                                           cx + r_inner, cy + r_inner,
                                           fill='#FFA726', outline='#E65100', width=2)
             # Decorative ring
-            self.coin_canvas.create_oval(cx - 40, cy - 40, cx + 40, cy + 40,
+            self.coin_canvas.create_oval(cx - 28, cy - 28, cx + 28, cy + 28,
                                           outline='#E65100', width=1)
             # Character 正
-            self.coin_canvas.create_text(cx, cy - 5, text="正",
-                                           font=('Microsoft YaHei', 30, 'bold'),
+            self.coin_canvas.create_text(cx, cy - 4, text="正",
+                                           font=('Microsoft YaHei', 22, 'bold'),
                                            fill='#BF360C')
-            self.coin_canvas.create_text(cx, cy + 28, text="HEADS",
-                                           font=('Arial', 9, 'bold'),
+            self.coin_canvas.create_text(cx, cy + 20, text="HEADS",
+                                           font=('Arial', 7, 'bold'),
                                            fill='#BF360C')
             # Small decorative dots
-            for dx, dy in [(-30, -25), (30, -25), (-30, 25), (30, 25)]:
+            for dx, dy in [(-22, -18), (22, -18), (-22, 18), (22, 18)]:
                 self.coin_canvas.create_oval(cx+dx-2, cy+dy-2, cx+dx+2, cy+dy+2,
                                               fill='#E65100', outline='')
         elif state == 'tails':
@@ -710,17 +710,17 @@ class DeciderPage(tk.Frame):
                                           cx + r_inner, cy + r_inner,
                                           fill='#42A5F5', outline='#0D47A1', width=2)
             # Decorative ring
-            self.coin_canvas.create_oval(cx - 40, cy - 40, cx + 40, cy + 40,
+            self.coin_canvas.create_oval(cx - 28, cy - 28, cx + 28, cy + 28,
                                           outline='#0D47A1', width=1)
             # Character 反
-            self.coin_canvas.create_text(cx, cy - 5, text="反",
-                                           font=('Microsoft YaHei', 30, 'bold'),
+            self.coin_canvas.create_text(cx, cy - 4, text="反",
+                                           font=('Microsoft YaHei', 22, 'bold'),
                                            fill='#0D47A1')
-            self.coin_canvas.create_text(cx, cy + 28, text="TAILS",
-                                           font=('Arial', 9, 'bold'),
+            self.coin_canvas.create_text(cx, cy + 20, text="TAILS",
+                                           font=('Arial', 7, 'bold'),
                                            fill='#0D47A1')
             # Small decorative dots
-            for dx, dy in [(-30, -25), (30, -25), (-30, 25), (30, 25)]:
+            for dx, dy in [(-22, -18), (22, -18), (-22, 18), (22, 18)]:
                 self.coin_canvas.create_oval(cx+dx-2, cy+dy-2, cx+dx+2, cy+dy+2,
                                               fill='#0D47A1', outline='')
 
@@ -836,7 +836,7 @@ class DeciderPage(tk.Frame):
         try:
             popup = tk.Toplevel(self)
             popup.title("抽签结果")
-            popup.geometry("320x200")
+            popup.geometry("280x170")
             popup.configure(bg='#FCE4EC')
             popup.transient(self.winfo_toplevel())
             popup.grab_set()
@@ -845,7 +845,7 @@ class DeciderPage(tk.Frame):
             tk.Label(popup, text=result, font=('Microsoft YaHei', 16, 'bold'),
                      bg='#FCE4EC', fg='#880E4F', wraplength=280).pack(pady=10, padx=20)
             RoundedButton(popup, text="好的", command=popup.destroy,
-                           bg='#E91E63', width=100, height=32).pack(pady=8)
+                           bg='#E91E63', width=84, height=26).pack(pady=8)
             popup.update_idletasks()
             AnimationEngine.animate_popup(popup, duration=300)
         except Exception:
@@ -974,9 +974,9 @@ class AccountingPage(tk.Frame):
         btn_frame = tk.Frame(form, bg=Theme.CARD)
         btn_frame.pack(pady=10)
         RoundedButton(btn_frame, text="💾 保存记录", command=self._add_entry,
-                       bg=Theme.PRIMARY, width=130, height=36).pack(side='left', padx=5)
+                       bg=Theme.PRIMARY, width=92, height=22).pack(side='left', padx=5)
         RoundedButton(btn_frame, text="清空", command=self._clear_form,
-                       bg=Theme.TEXT_MUTED, width=80, height=36).pack(side='left', padx=5)
+                       bg=Theme.TEXT_MUTED, width=70, height=22).pack(side='left', padx=5)
 
         self.add_status = tk.Label(form, text="", font=Theme.FONT_SMALL,
                                     bg=Theme.CARD, fg=Theme.SUCCESS)
@@ -1010,9 +1010,9 @@ class AccountingPage(tk.Frame):
         bf = tk.Frame(parent, bg=Theme.CARD)
         bf.pack(fill='x', padx=15, pady=5)
         RoundedButton(bf, text="🗑️ 删除选中", command=self._delete_selected,
-                       bg=Theme.DANGER, width=110, height=30).pack(side='left', padx=5)
+                       bg=Theme.DANGER, width=92, height=24).pack(side='left', padx=5)
         RoundedButton(bf, text="🔄 刷新", command=self._refresh_list,
-                       bg=Theme.PRIMARY, width=80, height=30).pack(side='left', padx=5)
+                       bg=Theme.PRIMARY, width=70, height=24).pack(side='left', padx=5)
 
         self.summary_frame = tk.Frame(parent, bg=Theme.CARD)
         self.summary_frame.pack(fill='x', padx=15, pady=10)
@@ -1157,7 +1157,7 @@ class StickyNoteWindow(tk.Toplevel):
         self.attributes('-topmost', True)
         self.configure(bg=color, highlightbackground='#BDBDBD', highlightthickness=1)
 
-        title_bar = tk.Frame(self, bg=color, height=30)
+        title_bar = tk.Frame(self, bg=color, height=24)
         title_bar.pack(fill='x', side='top')
         title_bar.pack_propagate(False)
 
@@ -1202,11 +1202,11 @@ class StickyNoteWindow(tk.Toplevel):
             data = DataManager.load('notes.json', {})
             notes = data.get('notes', [])
             if note_id < len(notes):
-                self.geometry(notes[note_id].get('geometry', '180x150+100+100'))
+                self.geometry(notes[note_id].get('geometry', '160x130+100+100'))
             else:
-                self.geometry('180x150+100+100')
+                self.geometry('160x130+100+100')
         except Exception:
-            self.geometry('180x150+100+100')
+            self.geometry('160x130+100+100')
         try:
             self.update_idletasks()
             AnimationEngine.animate_popup(self, duration=250)
@@ -1357,9 +1357,9 @@ class TimeCapsulePage(tk.Frame):
         btn_frame = tk.Frame(left_frame, bg=Theme.CARD)
         btn_frame.pack(pady=8)
         RoundedButton(btn_frame, text="📦 封存胶囊", command=self._seal_capsule,
-                       bg=Theme.PRIMARY, width=130, height=36).pack(side='left', padx=5)
+                       bg=Theme.PRIMARY, width=92, height=22).pack(side='left', padx=5)
         RoundedButton(btn_frame, text="清空", command=self._clear_text,
-                       bg=Theme.TEXT_MUTED, width=80, height=36).pack(side='left', padx=5)
+                       bg=Theme.TEXT_MUTED, width=70, height=22).pack(side='left', padx=5)
 
         self.capsule_status = tk.Label(left_frame, text="", font=Theme.FONT_SMALL,
                                         bg=Theme.CARD, fg=Theme.SUCCESS)
@@ -1527,11 +1527,11 @@ class NotePage(tk.Frame):
         bf.pack(pady=12)
         RoundedButton(bf, text="＋ 新建便签", command=self.add_note,
                        bg=Theme.WARNING, fg='#333',
-                       width=120, height=38).pack(side='left', padx=6)
+                       width=84, height=24).pack(side='left', padx=6)
         RoundedButton(bf, text="打开所有便签", command=self.open_all,
-                       bg=Theme.PRIMARY, width=130, height=38).pack(side='left', padx=6)
+                       bg=Theme.PRIMARY, width=92, height=24).pack(side='left', padx=6)
         RoundedButton(bf, text="清除所有数据", command=self.clear_all,
-                       bg=Theme.DANGER, width=130, height=38).pack(side='left', padx=6)
+                       bg=Theme.DANGER, width=92, height=24).pack(side='left', padx=6)
         info = tk.Frame(self, bg=Theme.CARD)
         info.pack(fill='both', expand=True, padx=15, pady=8)
         tk.Label(info, text="💡 使用说明", font=Theme.FONT_BODY_BOLD,
@@ -1638,13 +1638,13 @@ class TimerPage(tk.Frame):
         bf = tk.Frame(parent, bg=Theme.CARD)
         bf.pack(pady=10)
         self.pomo_start_btn = RoundedButton(bf, text="开始", command=self._pomo_toggle,
-                                              bg=Theme.SUCCESS, width=90, height=34)
+                                              bg=Theme.SUCCESS, width=76, height=26)
         self.pomo_start_btn.pack(side='left', padx=4)
         RoundedButton(bf, text="重置", command=self._pomo_reset,
-                       bg=Theme.TEXT_MUTED, width=80, height=34).pack(side='left', padx=4)
+                       bg=Theme.TEXT_MUTED, width=70, height=26).pack(side='left', padx=4)
         RoundedButton(bf, text="跳过", command=self._pomo_skip,
                        bg=Theme.WARNING, fg='#333',
-                       width=80, height=34).pack(side='left', padx=4)
+                       width=70, height=26).pack(side='left', padx=4)
         sf = tk.LabelFrame(parent, text="时间设置(分钟)", font=Theme.FONT_SMALL,
                             bg=Theme.CARD, fg=Theme.TEXT_SECONDARY, padx=10, pady=5,
                             bd=0, relief='flat')
@@ -1664,7 +1664,7 @@ class TimerPage(tk.Frame):
             setattr(self, f'pomo_{key}_var', var)
             var.set(str(default))
         RoundedButton(sf, text="应用设置", command=self._pomo_apply,
-                       bg=Theme.PRIMARY, width=100, height=28).pack(pady=5)
+                       bg=Theme.PRIMARY, width=84, height=22).pack(pady=5)
 
     def _pomo_apply(self):
         try:
@@ -1792,14 +1792,14 @@ class TimerPage(tk.Frame):
         for lbl, h, m, s in [("5分钟",0,5,0),("10分钟",0,10,0),("30分钟",0,30,0),("1小时",1,0,0)]:
             RoundedButton(pf, text=lbl, command=lambda h=h, m=m, s=s: self._cd_preset(h,m,s),
                             bg='#E3F2FD', fg='#1565C0',
-                            width=72, height=26, radius=8).pack(side='left', padx=3)
+                            width=72, height=26, radius=5).pack(side='left', padx=3)
         bf = tk.Frame(parent, bg=Theme.CARD)
         bf.pack(pady=10)
         self.cd_start_btn = RoundedButton(bf, text="开始倒计时", command=self._cd_toggle,
-                                             bg=Theme.SUCCESS, width=120, height=34)
+                                             bg=Theme.SUCCESS, width=84, height=26)
         self.cd_start_btn.pack(side='left', padx=5)
         RoundedButton(bf, text="重置", command=self._cd_reset,
-                       bg=Theme.TEXT_MUTED, width=80, height=34).pack(side='left', padx=5)
+                       bg=Theme.TEXT_MUTED, width=70, height=26).pack(side='left', padx=5)
 
     def _cd_preset(self, h, m, s):
         self.cd_h_var.set(str(h))
@@ -1877,7 +1877,7 @@ class TimerPage(tk.Frame):
         try:
             popup = tk.Toplevel(self)
             popup.title(title)
-            popup.geometry("300x180")
+            popup.geometry("260x150")
             popup.configure(bg='#FFEBEE')
             popup.attributes('-topmost', True)
             popup.transient(self.winfo_toplevel())
@@ -1889,7 +1889,7 @@ class TimerPage(tk.Frame):
             tk.Label(popup, text=msg, font=Theme.FONT_BODY,
                      bg='#FFEBEE', fg=Theme.TEXT_SECONDARY).pack()
             RoundedButton(popup, text="知道了", command=popup.destroy,
-                           bg=Theme.SUCCESS, width=100, height=32).pack(pady=10)
+                           bg=Theme.SUCCESS, width=84, height=26).pack(pady=10)
             popup.update_idletasks()
             AnimationEngine.animate_popup(popup, duration=280)
             try:
@@ -1932,10 +1932,10 @@ class AnniversaryPage(tk.Frame):
                        width=10, state='readonly',
                        font=Theme.FONT_BODY).grid(row=0, column=5, padx=3, pady=8)
         RoundedButton(af, text="＋ 添加", command=self._add,
-                       bg=Theme.PRIMARY, width=90, height=30).grid(row=0, column=6, padx=10, pady=8)
+                       bg=Theme.PRIMARY, width=76, height=24).grid(row=0, column=6, padx=10, pady=8)
         st = ttk.Style()
         st.configure('Anniv.Treeview', background=Theme.CARD, foreground=Theme.TEXT,
-                      fieldbackground=Theme.CARD, font=Theme.FONT_BODY, rowheight=28)
+                      fieldbackground=Theme.CARD, font=Theme.FONT_BODY, rowheight=22)
         st.configure('Anniv.Treeview.Heading', font=Theme.FONT_BODY_BOLD,
                       background=Theme.PRIMARY, foreground='white')
         lf = tk.Frame(self, bg=Theme.BG)
@@ -1955,9 +1955,9 @@ class AnniversaryPage(tk.Frame):
         bf = tk.Frame(self, bg=Theme.BG)
         bf.pack(fill='x', padx=15, pady=3)
         RoundedButton(bf, text="🗑️ 删除选中", command=self._delete,
-                       bg=Theme.DANGER, width=110, height=30).pack(side='left', padx=5)
+                       bg=Theme.DANGER, width=92, height=24).pack(side='left', padx=5)
         RoundedButton(bf, text="🔄 刷新", command=self._refresh,
-                       bg=Theme.PRIMARY, width=80, height=30).pack(side='left', padx=5)
+                       bg=Theme.PRIMARY, width=70, height=24).pack(side='left', padx=5)
         self.stats = tk.Label(self, text="", font=Theme.FONT_SMALL,
                                bg=Theme.BG, fg=Theme.TEXT_SECONDARY)
         self.stats.pack(pady=3)
@@ -2073,7 +2073,7 @@ class AnniversaryPage(tk.Frame):
         try:
             popup = tk.Toplevel(self)
             popup.title("纪念日详情")
-            popup.geometry("300x160")
+            popup.geometry("260x140")
             popup.configure(bg='#E8EAF6')
             popup.transient(self.winfo_toplevel())
             popup.grab_set()
@@ -2087,7 +2087,7 @@ class AnniversaryPage(tk.Frame):
             tk.Label(popup, text=d, font=('Microsoft YaHei', 12, 'bold'),
                      bg='#E8EAF6', fg=Theme.ACCENT).pack(pady=5)
             RoundedButton(popup, text="关闭", command=popup.destroy,
-                           bg=Theme.PRIMARY, width=90, height=28).pack(pady=5)
+                           bg=Theme.PRIMARY, width=76, height=22).pack(pady=5)
             popup.update_idletasks()
             AnimationEngine.animate_popup(popup, duration=280)
         except Exception:
@@ -2097,9 +2097,9 @@ class AnniversaryPage(tk.Frame):
 class YanbaApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("闫巴工具箱 YBv1.0")
-        self.geometry("540x620")
-        self.minsize(500, 560)
+        self.title("闫巴工具箱 YBv1.1")
+        self.geometry("480x560")
+        self.minsize(440, 500)
         DataManager.init_app_dir()
         self._set_window_icon()
         self._theme = DataManager.load('settings.json', {}).get('theme', 'light')
@@ -2198,9 +2198,9 @@ class YanbaApp(tk.Tk):
     def _build_home(self):
         self.home_frame = tk.Frame(self, bg=Theme.BG)
         tk.Label(self.home_frame, text="闫 巴 工 具 箱", font=Theme.FONT_TITLE,
-                 bg=Theme.BG, fg=Theme.PRIMARY).pack(pady=(30, 5))
+                 bg=Theme.BG, fg=Theme.PRIMARY).pack(pady=(15, 3))
         tk.Label(self.home_frame, text="— 便捷桌面小工具集 —",
-                 font=Theme.FONT_BODY, bg=Theme.BG, fg=Theme.TEXT_SECONDARY).pack(pady=(0, 20))
+                 font=Theme.FONT_BODY, bg=Theme.BG, fg=Theme.TEXT_SECONDARY).pack(pady=(0, 12))
 
         tools = [
             ("🎲", "随机决定器", "自定义选项 / 抽签 / 抛硬币", Theme.ACCENT, 'decider'),
@@ -2212,31 +2212,41 @@ class YanbaApp(tk.Tk):
         ]
         for emoji, name, desc, color, key in tools:
             card = tk.Frame(self.home_frame, bg=Theme.CARD, cursor='hand2')
-            card.pack(fill='x', padx=35, pady=7)
+            card.pack(fill='x', padx=18, pady=4)
             lf = tk.Frame(card, bg=Theme.CARD)
-            lf.pack(side='left', padx=15, pady=10)
-            tk.Label(lf, text=emoji, font=('Segoe UI Emoji', 30),
+            lf.pack(side='left', padx=10, pady=6)
+            tk.Label(lf, text=emoji, font=('Segoe UI Emoji', 22),
                      bg=Theme.CARD).pack()
             rf = tk.Frame(card, bg=Theme.CARD)
-            rf.pack(side='left', fill='x', expand=True, pady=10)
+            rf.pack(side='left', fill='x', expand=True, pady=6)
             tk.Label(rf, text=name, font=Theme.FONT_BODY_BOLD,
                      bg=Theme.CARD, fg=Theme.TEXT).pack(anchor='w')
             tk.Label(rf, text=desc, font=Theme.FONT_SMALL,
                      bg=Theme.CARD, fg=Theme.TEXT_MUTED).pack(anchor='w')
-            arrow = tk.Label(card, text="→", font=('Microsoft YaHei', 16),
+            arrow = tk.Label(card, text="→", font=('Microsoft YaHei', 13),
                                bg=Theme.CARD, fg=color)
-            arrow.pack(side='right', padx=15)
+            arrow.pack(side='right', padx=10)
             for w in [card, lf, rf, arrow] + list(lf.winfo_children()) + list(rf.winfo_children()):
                 w.bind('<Button-1>', lambda e, k=key: self._show_page(k))
-                w.bind('<Enter>', lambda e, c=card: c.configure(bg='#E8EAF6' if self._theme == 'dark' else '#F5F5F5'))
-                w.bind('<Leave>', lambda e, c=card: c.configure(bg=Theme.CARD))
+                def _card_enter(e, c=card):
+                    try:
+                        c.configure(bg='#E8EAF6' if self._theme == 'dark' else '#F5F5F5')
+                    except Exception:
+                        pass
+                def _card_leave(e, c=card):
+                    try:
+                        c.configure(bg=Theme.CARD)
+                    except Exception:
+                        pass
+                w.bind('<Enter>', _card_enter)
+                w.bind('<Leave>', _card_leave)
 
         # 今日纪念日
         try:
             today_items = self._get_today_items()
             if today_items:
                 tip = tk.Frame(self.home_frame, bg='#FFEBEE')
-                tip.pack(fill='x', padx=35, pady=(15, 10))
+                tip.pack(fill='x', padx=18, pady=(10, 6))
                 tk.Label(tip, text="📅 今日提醒", font=Theme.FONT_BODY_BOLD,
                          bg='#FFEBEE', fg='#C62828').pack(anchor='w', padx=15, pady=(8, 2))
                 for item in today_items[:3]:
@@ -2291,7 +2301,7 @@ class YanbaApp(tk.Tk):
                 if p:
                     p.pack_forget()
             if key == 'home':
-                self.title("闫巴工具箱 YBv1.0")
+                self.title("闫巴工具箱 YBv1.1")
                 self.home_frame.pack(fill='both', expand=True)
                 self.current_page = 'home'
                 self._add_theme_btn_home()
@@ -2304,16 +2314,16 @@ class YanbaApp(tk.Tk):
                 if cls:
                     self.pages[key] = cls(self)
             page = self.pages[key]
-            page.pack(fill='both', expand=True, pady=(32, 0))
-            self._nav_bar = tk.Frame(self, bg=Theme.BG, height=32)
-            self._nav_bar.place(x=0, y=0, relwidth=1, height=32)
+            page.pack(fill='both', expand=True, pady=(28, 0))
+            self._nav_bar = tk.Frame(self, bg=Theme.BG, height=26)
+            self._nav_bar.place(x=0, y=0, relwidth=1, height=26)
             nav_border = tk.Frame(self._nav_bar, bg=Theme.TEXT_MUTED, height=1)
             nav_border.pack(side='bottom', fill='x')
 
             back = RoundedButton(self._nav_bar, text="<", command=lambda: self._show_page('home'),
-                              width=36, height=28, radius=14, bg=Theme.BG,
+                              width=36, height=22, radius=5, bg=Theme.BG,
                               fg=Theme.TEXT)
-            back.place(x=2, y=2, width=36, height=28)
+            back.place(x=2, y=2, width=36, height=22)
 
             titles = {'decider': '随机决定器', 'notes': '桌面便签',
                        'timer': '计时工具', 'anniversary': '纪念日管理',
@@ -2325,13 +2335,11 @@ class YanbaApp(tk.Tk):
             self._theme_btn = tk.Label(self._nav_bar, text=theme_icon,
                                          font=('Segoe UI', 14),
                                          bg=Theme.BG, fg=Theme.TEXT_SECONDARY,
-                                         cursor='hand2', padx=8)
-            self._theme_btn.place(relx=1.0, y=0, anchor='ne', height=31)
+                                         cursor='hand2', padx=6)
+            self._theme_btn.place(relx=1.0, y=2, anchor='ne', height=24)
             self._theme_btn.bind('<Button-1>', lambda e: self._toggle_theme())
-            self._theme_btn.bind('<Enter>', lambda e: self._theme_btn.config(
-                fg=Theme.PRIMARY))
-            self._theme_btn.bind('<Leave>', lambda e: self._theme_btn.config(
-                fg=Theme.TEXT_SECONDARY))
+            self._theme_btn.bind('<Enter>', lambda e, b=self._theme_btn: b.config(fg=Theme.PRIMARY))
+            self._theme_btn.bind('<Leave>', lambda e, b=self._theme_btn: b.config(fg=Theme.TEXT_SECONDARY))
 
             self.current_page = key
             try:
@@ -2354,8 +2362,8 @@ class YanbaApp(tk.Tk):
                           cursor='hand2', padx=10, pady=5)
         btn.place(relx=1.0, y=0, anchor='ne')
         btn.bind('<Button-1>', lambda e: self._toggle_theme())
-        btn.bind('<Enter>', lambda e: btn.config(fg=Theme.PRIMARY))
-        btn.bind('<Leave>', lambda e: btn.config(fg=Theme.TEXT_SECONDARY))
+        btn.bind('<Enter>', lambda e, b=btn: b.config(fg=Theme.PRIMARY))
+        btn.bind('<Leave>', lambda e, b=btn: b.config(fg=Theme.TEXT_SECONDARY))
         self._home_theme_widgets.append(btn)
 
     def add_note(self):
@@ -2394,7 +2402,7 @@ class YanbaApp(tk.Tk):
             popup.configure(bg='#F3E5F5')
             popup.transient(self)
             popup.grab_set()
-            popup.geometry("380x300")
+            popup.geometry("320x240")
 
             tk.Label(popup, text="⏳", font=('Segoe UI Emoji', 36),
                      bg='#F3E5F5').pack(pady=(15, 0))
@@ -2422,7 +2430,7 @@ class YanbaApp(tk.Tk):
                          justify='left').pack(anchor='w', pady=(0, 8))
 
             RoundedButton(popup, text="好的", command=popup.destroy,
-                          bg=Theme.PRIMARY, width=100, height=32).pack(pady=10)
+                          bg=Theme.PRIMARY, width=84, height=26).pack(pady=10)
             popup.update_idletasks()
             AnimationEngine.animate_popup(popup, duration=300)
         except Exception:
