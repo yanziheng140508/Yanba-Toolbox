@@ -1,2476 +1,2609 @@
 # -*- coding: utf-8 -*-
 """
-闫巴工具箱 YBv1.1 — 现代动画版
-纯本地运行 · 全局异常保护 · JSON持久化 · 平滑交互动画
+工具箱 YBv1.2 - 完整独立 tkinter GUI 应用
+作者: YB
+仅使用 Python 标准库
 """
-
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog, colorchooser
+from tkinter import ttk, messagebox, filedialog, colorchooser
 import json
+import base64
+import re
 import os
 import sys
 import random
+import string
+import hashlib
+import difflib
+import time
 import datetime
-import traceback
+import py_compile
+import uuid
+import copy
+from io import BytesIO
 
+# =========================================================
+#  全局主题配色
+# =========================================================
+DARK = {
+    "BG": "#1A1A2E",
+    "CARD": "#252538",
+    "PRIMARY": "#7986CB",
+    "SIDEBAR_BG": "#1A1A2E",
+    "TEXT": "#E8E8F0",
+    "MUTED": "#9E9EB8",
+    "BORDER": "#3A3A52",
+    "HOVER": "#2D2D44",
+    "SELECTED": "#3A3A52",
+    "SUCCESS": "#81C784",
+    "WARNING": "#FFB74D",
+    "ERROR": "#EF5350",
+}
 
-class Theme:
-    BG = '#F0F2F5'
-    CARD = '#FFFFFF'
-    PRIMARY = '#3F51B5'
-    PRIMARY_DARK = '#303F9F'
-    ACCENT = '#FF7043'
-    SUCCESS = '#66BB6A'
-    WARNING = '#FFA726'
-    DANGER = '#EF5350'
-    TEXT = '#212121'
-    TEXT_SECONDARY = '#757575'
-    TEXT_MUTED = '#BDBDBD'
-    BORDER = '#E0E0E0'
+LIGHT = {
+    "BG": "#F0F2F5",
+    "CARD": "#FFFFFF",
+    "PRIMARY": "#3F51B5",
+    "SIDEBAR_BG": "#263238",
+    "TEXT": "#212121",
+    "MUTED": "#757575",
+    "BORDER": "#E0E0E0",
+    "HOVER": "#F5F5F5",
+    "SELECTED": "#E8EAF6",
+    "SUCCESS": "#66BB6A",
+    "WARNING": "#FFA726",
+    "ERROR": "#EF5350",
+}
 
-    NAV_BG = '#263238'
-    NAV_BACK_FG = '#ECEFF1'
-    NAV_BACK_HOVER_FG = '#4FC3F7'
-    NAV_BACK_HOVER_BG = '#1E272C'
-    NAV_TITLE_FG = '#FFFFFF'
+THEME = copy.deepcopy(DARK)
+THEME_MODE = "dark"
 
-    FONT_TITLE = ('Microsoft YaHei', 22, 'bold')
-    FONT_HEADER = ('Microsoft YaHei', 16, 'bold')
-    FONT_BODY = ('Microsoft YaHei', 11)
-    FONT_BODY_BOLD = ('Microsoft YaHei', 11, 'bold')
-    FONT_SMALL = ('Microsoft YaHei', 9)
-    FONT_NUM = ('Consolas', 42, 'bold')
-    FONT_BTN = ('Microsoft YaHei', 11, 'bold')
+def toggle_theme():
+    global THEME, THEME_MODE
+    if THEME_MODE == "dark":
+        THEME.update(LIGHT)
+        THEME_MODE = "light"
+    else:
+        THEME.update(DARK)
+        THEME_MODE = "dark"
 
-    DARK = {
-        'BG': '#1A1A2E',
-        'CARD': '#252538',
-        'PRIMARY': '#7986CB',
-        'PRIMARY_DARK': '#5C6BC0',
-        'ACCENT': '#FF8A65',
-        'SUCCESS': '#81C784',
-        'WARNING': '#FFB74D',
-        'DANGER': '#EF5350',
-        'TEXT': '#E8E8F0',
-        'TEXT_SECONDARY': '#9E9EB8',
-        'TEXT_MUTED': '#5C5C78',
-        'BORDER': '#3A3A52',
-        'NAV_BG': '#1A1A2E',
-        'NAV_BACK_FG': '#B0B0C8',
-        'NAV_BACK_HOVER_FG': '#64B5F6',
-        'NAV_BACK_HOVER_BG': '#252538',
-        'NAV_TITLE_FG': '#E8E8F0',
-        'NOTE_DEFAULT': '#3D3D5C',
-    }
+# =========================================================
+#  数据目录
+# =========================================================
+def get_app_dir():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
 
-    @classmethod
-    def set_dark(cls):
-        cls.BG = cls.DARK['BG']
-        cls.CARD = cls.DARK['CARD']
-        cls.PRIMARY = cls.DARK['PRIMARY']
-        cls.PRIMARY_DARK = cls.DARK['PRIMARY_DARK']
-        cls.ACCENT = cls.DARK['ACCENT']
-        cls.SUCCESS = cls.DARK['SUCCESS']
-        cls.WARNING = cls.DARK['WARNING']
-        cls.DANGER = cls.DARK['DANGER']
-        cls.TEXT = cls.DARK['TEXT']
-        cls.TEXT_SECONDARY = cls.DARK['TEXT_SECONDARY']
-        cls.TEXT_MUTED = cls.DARK['TEXT_MUTED']
-        cls.BORDER = cls.DARK['BORDER']
-        cls.NAV_BG = cls.DARK['NAV_BG']
-        cls.NAV_BACK_FG = cls.DARK['NAV_BACK_FG']
-        cls.NAV_BACK_HOVER_FG = cls.DARK['NAV_BACK_HOVER_FG']
-        cls.NAV_BACK_HOVER_BG = cls.DARK['NAV_BACK_HOVER_BG']
-        cls.NAV_TITLE_FG = cls.DARK['NAV_TITLE_FG']
+DATA_DIR = os.path.join(get_app_dir(), "yanba_data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-    @classmethod
-    def set_light(cls):
-        cls.BG = '#F0F2F5'
-        cls.CARD = '#FFFFFF'
-        cls.PRIMARY = '#3F51B5'
-        cls.PRIMARY_DARK = '#303F9F'
-        cls.ACCENT = '#FF7043'
-        cls.SUCCESS = '#66BB6A'
-        cls.WARNING = '#FFA726'
-        cls.DANGER = '#EF5350'
-        cls.TEXT = '#212121'
-        cls.TEXT_SECONDARY = '#757575'
-        cls.TEXT_MUTED = '#BDBDBD'
-        cls.BORDER = '#E0E0E0'
-        cls.NAV_BG = '#263238'
-        cls.NAV_BACK_FG = '#ECEFF1'
-        cls.NAV_BACK_HOVER_FG = '#4FC3F7'
-        cls.NAV_BACK_HOVER_BG = '#1E272C'
-        cls.NAV_TITLE_FG = '#FFFFFF'
+def load_json(name, default):
+    path = os.path.join(DATA_DIR, name)
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return default
 
+def save_json(name, data):
+    try:
+        path = os.path.join(DATA_DIR, name)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"保存 {name} 失败: {e}")
 
-class AnimationEngine:
-    @staticmethod
-    def fade_in(widget, duration=400, callback=None):
-        try:
-            widget.update_idletasks()
-            w = widget.winfo_width() or 400
-            h = widget.winfo_height() or 400
-            cx = widget.winfo_rootx() + w // 2
-            cy = widget.winfo_rooty() + h // 2
-            overlay = tk.Toplevel(widget)
-            overlay.overrideredirect(True)
-            overlay.attributes('-topmost', True)
-            overlay.configure(bg=Theme.BG)
-            overlay.geometry(f'{w}x{h}+{cx - w // 2}+{cy - h // 2}')
-            overlay.lower()
-            steps = 12
-            alpha = [0.0]
-
-            def _step():
-                alpha[0] += 1.0 / steps
-                if alpha[0] >= 1.0:
-                    overlay.destroy()
-                    if callback:
-                        callback()
-                    return
-                try:
-                    overlay.attributes('-alpha', min(alpha[0], 1.0))
-                    widget.after(duration // steps, _step)
-                except Exception:
-                    overlay.destroy()
-                    if callback:
-                        callback()
-            overlay.attributes('-alpha', 0.0)
-            widget.after(1, _step)
-        except Exception:
-            if callback:
-                callback()
-
-    @staticmethod
-    def animate_popup(window, duration=250):
-        try:
-            window.update_idletasks()
-            w = window.winfo_width()
-            h = window.winfo_height()
-            x = window.winfo_x()
-            y = window.winfo_y()
-            cx, cy = x + w // 2, y + h // 2
-            steps = 10
-            scale = [0.3]
-
-            def _step():
-                scale[0] += (1.0 - scale[0]) * 0.25
-                s = scale[0]
-                cw, ch = int(w * s), int(h * s)
-                window.geometry(f'{cw}x{ch}+{cx - cw // 2}+{cy - ch // 2}')
-                if s < 0.98:
-                    window.after(duration // steps, _step)
-                else:
-                    window.geometry(f'{w}x{h}+{x}+{y}')
-            window.geometry(f'{int(w * 0.3)}x{int(h * 0.3)}+'
-                            f'{cx - int(w * 0.3) // 2}+{cy - int(h * 0.3) // 2}')
-            window.after(10, _step)
-        except Exception:
-            pass
-
-    @staticmethod
-    def roll_number(label, from_text, to_text, duration=300):
-        try:
-            steps = 6
-            cur = [0]
-
-            def _step():
-                cur[0] += 1
-                if cur[0] >= steps:
-                    label.config(text=to_text)
-                    return
-                chars = []
-                for fc, tc in zip(from_text, to_text):
-                    chars.append(fc if fc == tc else random.choice('0123456789:'))
-                label.config(text=''.join(chars))
-                label.after(duration // steps, _step)
-            label.config(text=from_text)
-            label.after(20, _step)
-        except Exception:
-            label.config(text=to_text)
-
-    @staticmethod
-    def glow_label(label, color, times=3):
-        try:
-            orig = label.cget('fg')
-            cnt = [0]
-
-            def _blink():
-                cnt[0] += 1
-                if cnt[0] >= times * 2:
-                    label.config(fg=orig)
-                    return
-                label.config(fg='#FFFFFF' if cnt[0] % 2 == 0 else color)
-                label.after(150, _blink)
-            _blink()
-        except Exception:
-            pass
-
-    @staticmethod
-    def bounce_widget(widget, times=2, amplitude=8):
-        try:
-            if widget.place_info():
-                orig_y = float(widget.place_info().get('y', 0))
-            else:
-                orig_y = widget.winfo_y()
-            f = [0]
-            d = [1]
-
-            def _step():
-                f[0] += 1
-                if d[0] == 1:
-                    off = -amplitude * (1 - f[0] / (times * 4))
-                    if f[0] >= times * 2:
-                        d[0] = -1
-                        f[0] = 0
-                else:
-                    off = amplitude * (f[0] / (times * 4))
-                    if f[0] >= times * 2:
-                        if widget.place_info():
-                            widget.place(y=orig_y)
-                        return
-                if widget.place_info():
-                    widget.place(y=orig_y + off)
-                widget.after(25, _step)
-            _step()
-        except Exception:
-            pass
-
-
-class DataManager:
-    APP_DIR = None
-
-    @classmethod
-    def init_app_dir(cls):
-        try:
-            if getattr(sys, 'frozen', False):
-                base = os.path.dirname(sys.executable)
-            else:
-                base = os.path.dirname(os.path.abspath(__file__))
-            cls.APP_DIR = os.path.join(base, 'yanba_data')
-            os.makedirs(cls.APP_DIR, exist_ok=True)
-        except Exception:
-            cls.APP_DIR = os.path.join(os.path.expanduser('~'), '.yanba_data')
-            os.makedirs(cls.APP_DIR, exist_ok=True)
-
-    @classmethod
-    def _file(cls, name):
-        if cls.APP_DIR is None:
-            cls.init_app_dir()
-        return os.path.join(cls.APP_DIR, name)
-
-    @classmethod
-    def load(cls, name, default=None):
-        if default is None:
-            default = {}
-        try:
-            fp = cls._file(name)
-            if os.path.exists(fp):
-                with open(fp, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except Exception:
-            pass
-        return default
-
-    @classmethod
-    def save(cls, name, data):
-        try:
-            fp = cls._file(name)
-            with open(fp, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception:
-            return False
-
-
-class RoundedButton(tk.Canvas):
-    def __init__(self, master, text='', command=None, bg=Theme.PRIMARY,
-                 fg='white', width=84, height=24, radius=6, **kwargs):
-        super().__init__(master, width=width, height=height,
-                         highlightthickness=0, bg=master['bg'], **kwargs)
-        self._text = text
-        self._command = command
-        self._bg = bg
-        self._fg = fg
-        self._width = width
-        self._height = height
+# =========================================================
+#  自定义控件
+# =========================================================
+class RoundedContainer(tk.Canvas):
+    """圆角矩形容器，内部有 Frame"""
+    def __init__(self, master, bg=None, radius=14, padx=0, pady=0, **kwargs):
+        self._bg = bg if bg else THEME["CARD"]
         self._radius = radius
-        self._hover = False
-        self._draw(bg)
-        self.bind('<Enter>', self._on_enter)
-        self.bind('<Leave>', self._on_leave)
-        self.bind('<Button-1>', self._on_click)
+        self._padx = padx
+        self._pady = pady
+        super().__init__(master, bg=master["bg"] if hasattr(master, "__getitem__") else THEME["BG"],
+                         highlightthickness=0, bd=0, **kwargs)
+        self._rect_id = None
+        self.inner = tk.Frame(self, bg=self._bg)
+        self.bind("<Configure>", self._on_resize)
+        self._after_id = None
 
-    def _draw(self, color):
-        self.delete('all')
-        r, w, h = self._radius, self._width, self._height
-        self.create_oval(0, 0, 2*r, 2*r, fill=color, outline='')
-        self.create_oval(w-2*r, 0, w, 2*r, fill=color, outline='')
-        self.create_oval(0, h-2*r, 2*r, h, fill=color, outline='')
-        self.create_oval(w-2*r, h-2*r, w, h, fill=color, outline='')
-        self.create_rectangle(r, 0, w-r, h, fill=color, outline='')
-        self.create_rectangle(0, r, w, h-r, fill=color, outline='')
-        self.create_text(w//2, h//2, text=self._text,
-                         fill=self._fg, font=Theme.FONT_BTN)
-
-    def _on_enter(self, event):
-        self._hover = True
-        self._anim(self._bg, self._lighten(self._bg))
-
-    def _on_leave(self, event):
-        self._hover = False
-        self._anim(self._lighten(self._bg), self._bg)
-
-    def _anim(self, c1, c2):
-        steps, s = 8, [0]
-        def _step():
-            s[0] += 1
-            t = s[0] / steps
-            self._draw(self._mix(c1, c2, t))
-            if s[0] < steps and self._hover:
-                self.after(10, _step)
-        _step()
-
-    def _on_click(self, event):
-        if self._command:
-            self._command()
-
-    @staticmethod
-    def _lighten(c):
-        try:
-            r = min(255, int(c[1:3], 16) + 25)
-            g = min(255, int(c[3:5], 16) + 25)
-            b = min(255, int(c[5:7], 16) + 25)
-            return f'#{r:02x}{g:02x}{b:02x}'
-        except Exception:
-            return c
-
-    @staticmethod
-    def _mix(c1, c2, t):
-        try:
-            r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
-            r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
-            r = int(r1 + (r2 - r1) * t)
-            g = int(g1 + (g2 - g1) * t)
-            b = int(b1 + (b2 - b1) * t)
-            return f'#{r:02x}{g:02x}{b:02x}'
-        except Exception:
-            return c2
-
-
-class RoundedFrame(tk.Canvas):
-    def __init__(self, master, bg=None, radius=6, **kwargs):
-        self._bg = bg or Theme.CARD
-        self._radius = radius
-        self._items = []
-        super().__init__(master, bg=self._bg, highlightthickness=0, bd=0, **kwargs)
-        self.bind('<Configure>', self._on_resize)
-        self._draw()
-
-    def _draw(self):
-        self.delete('all')
+    def _on_resize(self, event=None):
+        self.delete("all")
         w = self.winfo_width()
         h = self.winfo_height()
-        if w < 10 or h < 10:
-            self.after(50, self._draw)
+        if w < 2 or h < 2:
             return
         r = self._radius
-        self.create_oval(0, 0, 2*r, 2*r, fill=self._bg, outline='')
-        self.create_oval(w-2*r, 0, w, 2*r, fill=self._bg, outline='')
-        self.create_oval(0, h-2*r, 2*r, h, fill=self._bg, outline='')
-        self.create_oval(w-2*r, h-2*r, w, h, fill=self._bg, outline='')
-        self.create_rectangle(r, 0, w-r, h, fill=self._bg, outline='')
-        self.create_rectangle(0, r, w, h-r, fill=self._bg, outline='')
+        # 画圆角矩形
+        self.create_oval(0, 0, 2*r, 2*r, fill=self._bg, outline="")
+        self.create_oval(w-2*r, 0, w, 2*r, fill=self._bg, outline="")
+        self.create_oval(0, h-2*r, 2*r, h, fill=self._bg, outline="")
+        self.create_oval(w-2*r, h-2*r, w, h, fill=self._bg, outline="")
+        self.create_rectangle(r, 0, w-r, h, fill=self._bg, outline="")
+        self.create_rectangle(0, r, w, h-r, fill=self._bg, outline="")
+        # 放置 inner frame
+        self.create_window(self._padx, self._pady, anchor="nw", window=self.inner,
+                           width=max(1, w - 2*self._padx), height=max(1, h - 2*self._pady))
 
-    def _on_resize(self, event):
+    def set_bg(self, color):
+        self._bg = color
+        self.inner.configure(bg=color)
+        self._on_resize()
+
+class CircleAvatar(tk.Canvas):
+    """圆形头像"""
+    def __init__(self, master, text, bg=None, fg="white", size=36, **kwargs):
+        self._text = text
+        self._bg = bg if bg else THEME["PRIMARY"]
+        self._fg = fg
+        self._size = size
+        super().__init__(master, width=size, height=size,
+                         bg=master["bg"] if hasattr(master, "__getitem__") else THEME["BG"],
+                         highlightthickness=0, bd=0, **kwargs)
+        self.bind("<Configure>", lambda e: self._draw())
+        self.after(10, self._draw)
+
+    def _draw(self):
+        self.delete("all")
+        s = self._size
+        self.create_oval(1, 1, s-1, s-1, fill=self._bg, outline="")
+        self.create_text(s//2, s//2, text=self._text, fill=self._fg,
+                         font=("Microsoft YaHei", int(s*0.38), "bold"))
+
+    def set_text(self, text):
+        self._text = text
         self._draw()
 
     def set_bg(self, color):
         self._bg = color
         self._draw()
 
-
-class RoundedEntry(tk.Frame):
-    def __init__(self, master, bg=None, fg=None, radius=5, **kwargs):
-        self._bg = bg or Theme.CARD
+class RoundedButton(tk.Canvas):
+    """圆角按钮（椭圆+矩形方式）"""
+    def __init__(self, master, text, command=None, bg=None, fg="white",
+                 radius=10, width=120, height=36, font=None, **kwargs):
+        self._text = text
+        self._bg = bg if bg else THEME["PRIMARY"]
+        self._fg = fg
         self._radius = radius
-        self._canvas = tk.Canvas(master, bg=master['bg'], highlightthickness=0, bd=0)
-        self._canvas.pack(side='left', fill='both', expand=True)
-        self._canvas.bind('<Configure>', self._on_resize)
-        self._entry = tk.Entry(self._canvas, bg=self._bg, fg=fg or Theme.TEXT,
-                               bd=0, highlightthickness=0, insertbackground=Theme.TEXT,
-                               font=Theme.FONT_BODY, **kwargs)
-        self._entry.place(relx=0.5, rely=0.5, anchor='center')
+        self._btn_w = width
+        self._btn_h = height
+        self._command = command
+        self._font = font or ("Microsoft YaHei", 10)
+        super().__init__(master, width=width, height=height,
+                         bg=master["bg"] if hasattr(master, "__getitem__") else THEME["BG"],
+                         highlightthickness=0, bd=0, cursor="hand2", **kwargs)
+        self.bind("<Configure>", lambda e: self._draw())
+        self.bind("<Button-1>", self._on_click)
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self._hover = False
+        self.after(10, self._draw)
+
+    def _lighter(self, color, pct=1.1):
+        color = color.lstrip("#")
+        r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
+        r = min(255, int(r*pct))
+        g = min(255, int(g*pct))
+        b = min(255, int(b*pct))
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    def _darker(self, color, pct=0.9):
+        color = color.lstrip("#")
+        r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
+        r = max(0, int(r*pct))
+        g = max(0, int(g*pct))
+        b = max(0, int(b*pct))
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    def _draw(self):
+        self.delete("all")
+        w = self._btn_w
+        h = self._btn_h
+        r = self._radius
+        color = self._lighter(self._bg, 1.08) if self._hover else self._bg
+        # 圆角
+        self.create_oval(0, 0, 2*r, 2*r, fill=color, outline="")
+        self.create_oval(w-2*r, 0, w, 2*r, fill=color, outline="")
+        self.create_oval(0, h-2*r, 2*r, h, fill=color, outline="")
+        self.create_oval(w-2*r, h-2*r, w, h, fill=color, outline="")
+        self.create_rectangle(r, 0, w-r, h, fill=color, outline="")
+        self.create_rectangle(0, r, w, h-r, fill=color, outline="")
+        self.create_text(w//2, h//2, text=self._text, fill=self._fg, font=self._font)
+
+    def _on_enter(self, e):
+        self._hover = True
+        self._draw()
+
+    def _on_leave(self, e):
+        self._hover = False
+        self._draw()
+
+    def _on_click(self, e):
+        try:
+            if self._command:
+                self._command()
+        except Exception as ex:
+            messagebox.showerror("错误", f"操作失败: {ex}")
+
+    def set_text(self, text):
+        self._text = text
+        self._draw()
+
+    def set_bg(self, color):
+        self._bg = color
+        self._draw()
+
+# =========================================================
+#  工具页面基类
+# =========================================================
+class BasePage(tk.Frame):
+    def __init__(self, master, app, title=""):
+        super().__init__(master, bg=THEME["BG"])
+        self.app = app
+        self.title_text = title
+        self._build()
+
+    def _build(self):
+        # 顶部标题条
+        header = tk.Frame(self, bg=THEME["BG"])
+        header.pack(fill="x", padx=20, pady=(12, 6))
+        back = RoundedButton(header, "← 返回", command=self.app.go_home,
+                             bg=THEME["CARD"], fg=THEME["TEXT"], width=90, height=32, radius=8)
+        back.pack(side="left")
+        tk.Label(header, text=self.title_text, fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 15, "bold")).pack(side="left", padx=12)
+        # 内容容器：单独的 Frame，确保 build_content 能 fill/expand 且不被 header 遮挡
+        self._content_wrap = tk.Frame(self, bg=THEME["BG"])
+        self._content_wrap.pack(fill="both", expand=True)
+        self.build_content()
+
+    def build_content(self):
+        pass
+
+    def safe(self, func, *a, **k):
+        try:
+            return func(*a, **k)
+        except Exception as e:
+            messagebox.showerror("错误", f"操作失败: {e}")
+
+# =========================================================
+#  1. JSON 格式化
+# =========================================================
+class JsonPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "JSON格式化")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 按钮区
+        bar = tk.Frame(wrap, bg=THEME["BG"])
+        bar.pack(fill="x", pady=(0, 8))
+        for t, cmd in [("美化", self._pretty), ("压缩", self._compress),
+                       ("校验", self._validate), ("复制", self._copy), ("清除", self._clear)]:
+            RoundedButton(bar, t, command=cmd, width=88, height=32, radius=8).pack(side="left", padx=4)
+        # 文本区
+        rc = RoundedContainer(wrap, radius=14, padx=12, pady=12)
+        rc.pack(fill="both", expand=True)
+        self.txt = tk.Text(rc.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                           insertbackground=THEME["TEXT"], bd=0, relief="flat",
+                           font=("Consolas", 11), wrap="word")
+        self.txt.pack(fill="both", expand=True)
+
+    def _get(self):
+        return self.txt.get("1.0", "end").strip()
+
+    def _pretty(self):
+        s = self._get()
+        if not s:
+            return
+        try:
+            obj = json.loads(s)
+            self.txt.delete("1.0", "end")
+            self.txt.insert("1.0", json.dumps(obj, ensure_ascii=False, indent=2))
+        except Exception as e:
+            messagebox.showerror("JSON 错误", str(e))
+
+    def _compress(self):
+        s = self._get()
+        if not s:
+            return
+        try:
+            obj = json.loads(s)
+            self.txt.delete("1.0", "end")
+            self.txt.insert("1.0", json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
+        except Exception as e:
+            messagebox.showerror("JSON 错误", str(e))
+
+    def _validate(self):
+        s = self._get()
+        if not s:
+            messagebox.showinfo("校验", "空内容")
+            return
+        try:
+            json.loads(s)
+            messagebox.showinfo("校验", "✅ 合法的 JSON")
+        except Exception as e:
+            messagebox.showerror("JSON 错误", str(e))
+
+    def _copy(self):
+        s = self._get()
+        self.clipboard_clear()
+        self.clipboard_append(s)
+        messagebox.showinfo("复制", "已复制到剪贴板")
+
+    def _clear(self):
+        self.txt.delete("1.0", "end")
+
+# =========================================================
+#  2. Base64 编解码
+# =========================================================
+class Base64Page(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "Base64 编解码")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        cols = tk.Frame(wrap, bg=THEME["BG"])
+        cols.pack(fill="both", expand=True)
+        # 左列
+        lcol = tk.Frame(cols, bg=THEME["BG"])
+        lcol.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        tk.Label(lcol, text="原文", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").pack(fill="x", pady=(0,4))
+        rc1 = RoundedContainer(lcol, radius=14, padx=10, pady=10)
+        rc1.pack(fill="both", expand=True)
+        self.t1 = tk.Text(rc1.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                          insertbackground=THEME["TEXT"], bd=0, font=("Consolas", 11), wrap="word")
+        self.t1.pack(fill="both", expand=True)
+        # 中间按钮
+        btns = tk.Frame(cols, bg=THEME["BG"])
+        btns.pack(side="left", fill="y", padx=4)
+        tk.Frame(btns, bg=THEME["BG"], height=30).pack()
+        RoundedButton(btns, "编码 →", command=self._encode, width=92, height=36, radius=8).pack(pady=6)
+        RoundedButton(btns, "← 解码", command=self._decode, width=92, height=36, radius=8,
+                      bg=THEME["CARD"], fg=THEME["TEXT"]).pack(pady=6)
+        # 右列
+        rcol = tk.Frame(cols, bg=THEME["BG"])
+        rcol.pack(side="left", fill="both", expand=True, padx=(8, 0))
+        tk.Label(rcol, text="Base64", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").pack(fill="x", pady=(0,4))
+        rc2 = RoundedContainer(rcol, radius=14, padx=10, pady=10)
+        rc2.pack(fill="both", expand=True)
+        self.t2 = tk.Text(rc2.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                          insertbackground=THEME["TEXT"], bd=0, font=("Consolas", 11), wrap="word")
+        self.t2.pack(fill="both", expand=True)
+
+    def _encode(self):
+        try:
+            s = self.t1.get("1.0", "end").rstrip("\n")
+            out = base64.b64encode(s.encode("utf-8")).decode("ascii")
+            self.t2.delete("1.0", "end")
+            self.t2.insert("1.0", out)
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+    def _decode(self):
+        try:
+            s = self.t2.get("1.0", "end").strip()
+            out = base64.b64decode(s.encode("ascii")).decode("utf-8")
+            self.t1.delete("1.0", "end")
+            self.t1.insert("1.0", out)
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+# =========================================================
+#  3. 密码生成器
+# =========================================================
+class PasswordPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "密码生成器")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 结果显示
+        rc = RoundedContainer(wrap, radius=14, padx=16, pady=16)
+        rc.pack(fill="x", pady=(0, 16))
+        self.result = tk.StringVar(value="点击下方「生成密码」")
+        tk.Label(rc.inner, textvariable=self.result, fg=THEME["PRIMARY"],
+                 bg=THEME["CARD"], font=("Consolas", 16, "bold")).pack(side="left")
+        RoundedButton(rc.inner, "复制", command=self._copy, width=80, height=32, radius=8).pack(side="right")
+        # 选项
+        card = RoundedContainer(wrap, radius=14, padx=16, pady=16)
+        card.pack(fill="x")
+        cfg = tk.Frame(card.inner, bg=THEME["CARD"])
+        cfg.pack(fill="x")
+        tk.Label(cfg, text="密码长度:", fg=THEME["TEXT"], bg=THEME["CARD"],
+                 font=("Microsoft YaHei", 10)).grid(row=0, column=0, sticky="w")
+        self.len_var = tk.IntVar(value=16)
+        self.len_label = tk.Label(cfg, text="16", fg=THEME["PRIMARY"], bg=THEME["CARD"],
+                                  font=("Consolas", 12, "bold"))
+        self.len_label.grid(row=0, column=1, sticky="w", padx=8)
+        scale = tk.Scale(cfg, from_=4, to=64, orient="horizontal", variable=self.len_var,
+                         bg=THEME["CARD"], fg=THEME["TEXT"], troughcolor=THEME["HOVER"],
+                         activebackground=THEME["PRIMARY"], highlightthickness=0,
+                         command=lambda v: self.len_label.configure(text=str(int(float(v)))))
+        scale.grid(row=0, column=2, sticky="we", padx=8)
+        cfg.grid_columnconfigure(2, weight=1)
+        self.lower = tk.BooleanVar(value=True)
+        self.upper = tk.BooleanVar(value=True)
+        self.num = tk.BooleanVar(value=True)
+        self.sym = tk.BooleanVar(value=False)
+        opts = [("包含小写 a-z", self.lower), ("包含大写 A-Z", self.upper),
+                ("包含数字 0-9", self.num), ("包含符号 !@#$", self.sym)]
+        for i, (t, v) in enumerate(opts):
+            cb = tk.Checkbutton(cfg, text=t, variable=v, bg=THEME["CARD"], fg=THEME["TEXT"],
+                                selectcolor=THEME["CARD"], activebackground=THEME["CARD"],
+                                activeforeground=THEME["TEXT"], font=("Microsoft YaHei", 10))
+            cb.grid(row=1+i//2, column=i%2, sticky="w", pady=6, padx=4)
+        # 生成按钮
+        btn_bar = tk.Frame(wrap, bg=THEME["BG"])
+        btn_bar.pack(fill="x", pady=16)
+        RoundedButton(btn_bar, "🎲 生成密码", command=self._gen, width=180, height=42, radius=10).pack(side="left")
+
+    def _gen(self):
+        pool = ""
+        if self.lower.get(): pool += string.ascii_lowercase
+        if self.upper.get(): pool += string.ascii_uppercase
+        if self.num.get():   pool += string.digits
+        if self.sym.get():   pool += "!@#$%^&*()-_=+[]{};:,.<>?"
+        if not pool:
+            messagebox.showwarning("提示", "请至少选择一种字符类型")
+            return
+        length = self.len_var.get()
+        pwd = "".join(random.choice(pool) for _ in range(length))
+        self.result.set(pwd)
+
+    def _copy(self):
+        pwd = self.result.get()
+        if not pwd or pwd.startswith("点击"):
+            return
+        self.clipboard_clear()
+        self.clipboard_append(pwd)
+        messagebox.showinfo("复制", "密码已复制")
+
+# =========================================================
+#  4. 单位换算
+# =========================================================
+class UnitPage(BasePage):
+    UNITS = {
+        "长度": {
+            "m": 1.0, "km": 1000.0, "cm": 0.01, "mm": 0.001,
+            "mi": 1609.344, "yd": 0.9144, "ft": 0.3048, "in": 0.0254
+        },
+        "重量": {
+            "kg": 1.0, "g": 0.001, "mg": 1e-6, "t": 1000.0,
+            "lb": 0.45359237, "oz": 0.0283495
+        },
+    }
+
+    def __init__(self, master, app):
+        super().__init__(master, app, "单位换算")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # Tabs
+        card = RoundedContainer(wrap, radius=14, padx=16, pady=16)
+        card.pack(fill="both", expand=True)
+        nb_bar = tk.Frame(card.inner, bg=THEME["CARD"])
+        nb_bar.pack(fill="x")
+        self.tab_var = tk.StringVar(value="长度")
+        self.tabs = {}
+        for t in ["长度", "重量", "温度"]:
+            btn = tk.Label(nb_bar, text=t, padx=16, pady=8, cursor="hand2",
+                           font=("Microsoft YaHei", 10, "bold"))
+            btn.pack(side="left", padx=2)
+            btn.bind("<Button-1>", lambda e, tt=t: self._switch_tab(tt))
+            self.tabs[t] = btn
+        # 内容
+        body = tk.Frame(card.inner, bg=THEME["CARD"])
+        body.pack(fill="both", expand=True, pady=12)
+        self.from_var = tk.StringVar()
+        self.to_var = tk.StringVar()
+        self.from_unit = tk.StringVar()
+        self.to_unit = tk.StringVar()
+        # 左输入
+        left = tk.Frame(body, bg=THEME["CARD"])
+        left.pack(side="left", fill="both", expand=True, padx=8)
+        tk.Label(left, text="从", fg=THEME["MUTED"], bg=THEME["CARD"], anchor="w").pack(fill="x")
+        e1_rc = RoundedContainer(left, bg=THEME["BG"], radius=10, padx=10, pady=4)
+        e1_rc.pack(fill="x", pady=4)
+        e1 = tk.Entry(e1_rc.inner, textvariable=self.from_var, bg=THEME["BG"],
+                      fg=THEME["TEXT"], bd=0, font=("Consolas", 14), insertbackground=THEME["TEXT"])
+        e1.pack(fill="x")
+        self.cb_from = ttk.Combobox(left, textvariable=self.from_unit, state="readonly")
+        self.cb_from.pack(fill="x", pady=8)
+        self.cb_from.bind("<<ComboboxSelected>>", lambda e: self._conv_from())
+        # 中间按钮
+        mid = tk.Frame(body, bg=THEME["CARD"])
+        mid.pack(side="left", fill="y", padx=8)
+        tk.Frame(mid, bg=THEME["CARD"], height=30).pack()
+        RoundedButton(mid, "→ 换算", command=self._conv_from, width=92, height=34, radius=8).pack(pady=6)
+        RoundedButton(mid, "← 换算", command=self._conv_to, width=92, height=34, radius=8,
+                      bg=THEME["BG"], fg=THEME["TEXT"]).pack(pady=6)
+        # 右输入
+        right = tk.Frame(body, bg=THEME["CARD"])
+        right.pack(side="left", fill="both", expand=True, padx=8)
+        tk.Label(right, text="到", fg=THEME["MUTED"], bg=THEME["CARD"], anchor="w").pack(fill="x")
+        e2_rc = RoundedContainer(right, bg=THEME["BG"], radius=10, padx=10, pady=4)
+        e2_rc.pack(fill="x", pady=4)
+        e2 = tk.Entry(e2_rc.inner, textvariable=self.to_var, bg=THEME["BG"],
+                      fg=THEME["TEXT"], bd=0, font=("Consolas", 14), insertbackground=THEME["TEXT"])
+        e2.pack(fill="x")
+        self.cb_to = ttk.Combobox(right, textvariable=self.to_unit, state="readonly")
+        self.cb_to.pack(fill="x", pady=8)
+        self.cb_to.bind("<<ComboboxSelected>>", lambda e: self._conv_from())
+        # 设置初始 tab
+        self._switch_tab("长度")
+
+    def _switch_tab(self, name):
+        self.tab_var.set(name)
+        for t, b in self.tabs.items():
+            if t == name:
+                b.configure(bg=THEME["PRIMARY"], fg="white")
+            else:
+                b.configure(bg=THEME["HOVER"], fg=THEME["TEXT"])
+        if name == "温度":
+            units = ["°C", "°F", "K"]
+        else:
+            units = list(self.UNITS[name].keys())
+        self.cb_from["values"] = units
+        self.cb_to["values"] = units
+        self.from_unit.set(units[0])
+        self.to_unit.set(units[1] if len(units) > 1 else units[0])
+
+    def _conv_from(self):
+        try:
+            v = float(self.from_var.get() or 0)
+        except Exception:
+            self.from_var.set("")
+            return
+        out = self._convert(v, self.tab_var.get(), self.from_unit.get(), self.to_unit.get())
+        self.to_var.set(f"{out:.6g}")
+
+    def _conv_to(self):
+        try:
+            v = float(self.to_var.get() or 0)
+        except Exception:
+            self.to_var.set("")
+            return
+        out = self._convert(v, self.tab_var.get(), self.to_unit.get(), self.from_unit.get())
+        self.from_var.set(f"{out:.6g}")
+
+    def _convert(self, v, kind, a, b):
+        if kind == "温度":
+            return self._conv_temp(v, a, b)
+        tbl = self.UNITS[kind]
+        base = v * tbl[a]
+        return base / tbl[b]
+
+    @staticmethod
+    def _conv_temp(v, a, b):
+        # 统一转成摄氏度
+        if a == "°C": c = v
+        elif a == "°F": c = (v - 32) * 5 / 9
+        elif a == "K":  c = v - 273.15
+        else: c = v
+        if b == "°C": return c
+        if b == "°F": return c * 9 / 5 + 32
+        if b == "K":  return c + 273.15
+        return c
+
+# =========================================================
+#  5. 颜色选择器
+# =========================================================
+class ColorPage(BasePage):
+    def __init__(self, master, app):
+        self.color_hex = "#6366F1"
+        self.color_rgb = (99, 102, 241)
+        super().__init__(master, app, "颜色选择器")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 颜色预览
+        top = tk.Frame(wrap, bg=THEME["BG"])
+        top.pack(fill="x", pady=(0, 16))
+        self.preview = tk.Canvas(top, width=160, height=160, bg=THEME["BG"], highlightthickness=0)
+        self.preview.pack(side="left", padx=(0, 24))
+        self.preview.bind("<Configure>", lambda e: self._draw_preview())
+        info = tk.Frame(top, bg=THEME["BG"])
+        info.pack(side="left", fill="both", expand=True)
+        self.hex_var = tk.StringVar(value=self.color_hex)
+        self.rgb_var = tk.StringVar(value="rgb(99, 102, 241)")
+        # HEX
+        self._row(info, "HEX:", self.hex_var, self._copy_hex, 0)
+        self._row(info, "RGB:", self.rgb_var, self._copy_rgb, 1)
+        RoundedButton(info, "🎨 选择颜色", command=self._pick, width=150, height=38, radius=10).grid(row=2, column=0, sticky="w", pady=12)
+        self.after(20, self._draw_preview)
+
+    def _row(self, parent, label, var, cmd, r):
+        tk.Label(parent, text=label, fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold"), width=6, anchor="w").grid(row=r, column=0, sticky="w")
+        rc = RoundedContainer(parent, bg=THEME["CARD"], radius=10, padx=10, pady=4)
+        rc.grid(row=r, column=1, sticky="we", padx=6, pady=4)
+        e = tk.Entry(rc.inner, textvariable=var, bg=THEME["CARD"], fg=THEME["TEXT"],
+                     bd=0, font=("Consolas", 12), readonlybackground=THEME["CARD"], state="readonly")
+        e.pack(fill="x")
+        RoundedButton(parent, "复制", command=cmd, width=70, height=30, radius=8,
+                      bg=THEME["CARD"], fg=THEME["TEXT"]).grid(row=r, column=2, padx=4)
+        parent.grid_columnconfigure(1, weight=1)
+
+    def _draw_preview(self):
+        self.preview.delete("all")
+        w, h = 160, 160
+        r = 20
+        c = self.color_hex
+        self.preview.create_oval(0, 0, 2*r, 2*r, fill=c, outline="")
+        self.preview.create_oval(w-2*r, 0, w, 2*r, fill=c, outline="")
+        self.preview.create_oval(0, h-2*r, 2*r, h, fill=c, outline="")
+        self.preview.create_oval(w-2*r, h-2*r, w, h, fill=c, outline="")
+        self.preview.create_rectangle(r, 0, w-r, h, fill=c, outline="")
+        self.preview.create_rectangle(0, r, w, h-r, fill=c, outline="")
+
+    def _pick(self):
+        try:
+            rgb, hx = colorchooser.askcolor(color=self.color_hex, title="选择颜色")
+            if rgb and hx:
+                self.color_hex = hx
+                self.color_rgb = (int(rgb[0]), int(rgb[1]), int(rgb[2]))
+                self.hex_var.set(hx)
+                r, g, b = self.color_rgb
+                self.rgb_var.set(f"rgb({r}, {g}, {b})")
+                self._draw_preview()
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+    def _copy_hex(self):
+        self.clipboard_clear(); self.clipboard_append(self.hex_var.get())
+        messagebox.showinfo("复制", "HEX 已复制")
+
+    def _copy_rgb(self):
+        self.clipboard_clear(); self.clipboard_append(self.rgb_var.get())
+        messagebox.showinfo("复制", "RGB 已复制")
+
+# =========================================================
+#  6. 随机决定器
+# =========================================================
+class DeciderPage(BasePage):
+    def __init__(self, master, app):
+        self.options = load_json("decider.json", ["选项A", "选项B", "选项C"])
+        self.chits = load_json("chits.json", ["签1", "签2", "签3", "签4", "签5"])
+        super().__init__(master, app, "随机决定器")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # Tabs bar
+        card = RoundedContainer(wrap, radius=14, padx=16, pady=16)
+        card.pack(fill="both", expand=True)
+        nb = tk.Frame(card.inner, bg=THEME["CARD"])
+        nb.pack(fill="x")
+        self.tab = tk.StringVar(value="自定义")
+        self.btns = {}
+        for t in ["自定义", "抽签", "抛硬币"]:
+            b = tk.Label(nb, text=t, padx=16, pady=8, cursor="hand2",
+                         font=("Microsoft YaHei", 10, "bold"))
+            b.pack(side="left", padx=2)
+            b.bind("<Button-1>", lambda e, tt=t: self._switch(tt))
+            self.btns[t] = b
+        self.body = tk.Frame(card.inner, bg=THEME["CARD"])
+        self.body.pack(fill="both", expand=True, pady=10)
+        self._switch("自定义")
+
+    def _switch(self, name):
+        self.tab.set(name)
+        for t, b in self.btns.items():
+            if t == name:
+                b.configure(bg=THEME["PRIMARY"], fg="white")
+            else:
+                b.configure(bg=THEME["HOVER"], fg=THEME["TEXT"])
+        for c in self.body.winfo_children():
+            c.destroy()
+        if name == "自定义":
+            self._build_custom(self.body)
+        elif name == "抽签":
+            self._build_chits(self.body)
+        else:
+            self._build_coin(self.body)
+
+    def _build_custom(self, parent):
+        left = tk.Frame(parent, bg=THEME["CARD"])
+        left.pack(side="left", fill="both", expand=True, padx=4)
+        tk.Label(left, text="选项列表（每行一个）", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").pack(fill="x", pady=(0,4))
+        rc = RoundedContainer(left, radius=10, padx=10, pady=8)
+        rc.pack(fill="both", expand=True)
+        self.txt_opt = tk.Text(rc.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                               insertbackground=THEME["TEXT"], bd=0,
+                               font=("Microsoft YaHei", 11), height=12)
+        self.txt_opt.pack(fill="both", expand=True)
+        self.txt_opt.insert("1.0", "\n".join(self.options))
+        # 右侧
+        right = tk.Frame(parent, bg=THEME["CARD"])
+        right.pack(side="left", fill="both", expand=True, padx=4)
+        tk.Label(right, text="✨ 随机结果", bg=THEME["CARD"], fg=THEME["MUTED"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(pady=(0,8))
+        self.res_custom = tk.Label(right, text="？", bg=THEME["CARD"], fg=THEME["PRIMARY"],
+                                   font=("Microsoft YaHei", 28, "bold"), wraplength=320, justify="center")
+        self.res_custom.pack(pady=16, fill="both", expand=True)
+        btns = tk.Frame(right, bg=THEME["CARD"])
+        btns.pack(fill="x", pady=8)
+        RoundedButton(btns, "🎯 随机选择", command=self._do_custom,
+                      width=140, height=40, radius=10).pack(side="left", padx=4)
+        RoundedButton(btns, "保存选项", command=self._save_opts, bg=THEME["CARD"], fg=THEME["TEXT"],
+                      width=100, height=40, radius=10).pack(side="left", padx=4)
+
+    def _opts_list(self):
+        return [x.strip() for x in self.txt_opt.get("1.0", "end").splitlines() if x.strip()]
+
+    def _do_custom(self):
+        opts = self._opts_list()
+        if not opts:
+            messagebox.showwarning("提示", "请输入选项")
+            return
+        def step(i=0):
+            if i > 12:
+                pick = random.choice(opts)
+                self.res_custom.configure(text=pick)
+                return
+            self.res_custom.configure(text=random.choice(opts))
+            self.after(40 + i*10, lambda: step(i+1))
+        step()
+
+    def _save_opts(self):
+        self.options = self._opts_list()
+        save_json("decider.json", self.options)
+        messagebox.showinfo("保存", f"已保存 {len(self.options)} 个选项")
+
+    def _build_chits(self, parent):
+        left = tk.Frame(parent, bg=THEME["CARD"])
+        left.pack(side="left", fill="both", expand=True, padx=4)
+        tk.Label(left, text="签文列表（每行一个）", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").pack(fill="x", pady=(0,4))
+        rc = RoundedContainer(left, radius=10, padx=10, pady=8)
+        rc.pack(fill="both", expand=True)
+        self.txt_chit = tk.Text(rc.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                                insertbackground=THEME["TEXT"], bd=0,
+                                font=("Microsoft YaHei", 11), height=12)
+        self.txt_chit.pack(fill="both", expand=True)
+        self.txt_chit.insert("1.0", "\n".join(self.chits))
+        right = tk.Frame(parent, bg=THEME["CARD"])
+        right.pack(side="left", fill="both", expand=True, padx=4)
+        tk.Label(right, text="🎋 抽签结果", bg=THEME["CARD"], fg=THEME["MUTED"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(pady=(0,8))
+        self.res_chit = tk.Label(right, text="求一支签吧", bg=THEME["CARD"], fg=THEME["PRIMARY"],
+                                 font=("Microsoft YaHei", 20, "bold"), wraplength=320, justify="center")
+        self.res_chit.pack(pady=16, fill="both", expand=True)
+        btns = tk.Frame(right, bg=THEME["CARD"])
+        btns.pack(fill="x", pady=8)
+        RoundedButton(btns, "🎋 抽签", command=self._do_chit, width=140, height=40, radius=10).pack(side="left", padx=4)
+        RoundedButton(btns, "保存签文", command=self._save_chits, bg=THEME["CARD"], fg=THEME["TEXT"],
+                      width=100, height=40, radius=10).pack(side="left", padx=4)
+
+    def _chits_list(self):
+        return [x.strip() for x in self.txt_chit.get("1.0", "end").splitlines() if x.strip()]
+
+    def _do_chit(self):
+        cs = self._chits_list()
+        if not cs:
+            messagebox.showwarning("提示", "请输入签文")
+            return
+        def step(i=0):
+            if i > 14:
+                self.res_chit.configure(text=random.choice(cs))
+                return
+            self.res_chit.configure(text=random.choice(cs))
+            self.after(40 + i*8, lambda: step(i+1))
+        step()
+
+    def _save_chits(self):
+        self.chits = self._chits_list()
+        save_json("chits.json", self.chits)
+        messagebox.showinfo("保存", f"已保存 {len(self.chits)} 个签文")
+
+    def _build_coin(self, parent):
+        tk.Label(parent, text="", bg=THEME["CARD"], height=2).pack()
+        self.coin_canvas = tk.Canvas(parent, width=240, height=240, bg=THEME["CARD"], highlightthickness=0)
+        self.coin_canvas.pack(pady=8)
+        self.coin_canvas.bind("<Configure>", lambda e: self._draw_coin("?"))
+        self.coin_res = tk.Label(parent, text="点击抛硬币", bg=THEME["CARD"], fg=THEME["TEXT"],
+                                 font=("Microsoft YaHei", 14, "bold"))
+        self.coin_res.pack(pady=8)
+        RoundedButton(parent, "🪙 抛硬币", command=self._do_coin, width=160, height=42, radius=10).pack(pady=8)
+        self.after(30, lambda: self._draw_coin("?"))
+
+    def _draw_coin(self, side):
+        c = self.coin_canvas
+        c.delete("all")
+        cx, cy = 120, 120
+        cr = 100
+        if side == "正":
+            fill = "#FACC15"; text = "正"; tc = "#78350F"
+        elif side == "反":
+            fill = "#94A3B8"; text = "反"; tc = "#0F172A"
+        else:
+            fill = "#CBD5E1"; text = "?"; tc = "#334155"
+        c.create_oval(cx-cr, cy-cr, cx+cr, cy+cr, fill=fill, outline="", width=0)
+        c.create_oval(cx-cr+8, cy-cr+8, cx+cr-8, cy+cr-8, fill="", outline="#FFFFFF", width=2)
+        c.create_text(cx, cy, text=text, fill=tc, font=("Microsoft YaHei", 64, "bold"))
+
+    def _do_coin(self):
+        sides = ["正", "反"]
+        def step(i=0):
+            if i > 10:
+                s = random.choice(sides)
+                self._draw_coin(s)
+                self.coin_res.configure(text=f"结果: {s}面")
+                return
+            self._draw_coin(sides[i % 2])
+            self.after(60 + i*10, lambda: step(i+1))
+        step()
+
+# =========================================================
+#  7. 字数统计
+# =========================================================
+class WordCountPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "字数统计")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 输入
+        rc = RoundedContainer(wrap, radius=14, padx=12, pady=12)
+        rc.pack(fill="both", expand=True)
+        self.txt = tk.Text(rc.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                           insertbackground=THEME["TEXT"], bd=0,
+                           font=("Microsoft YaHei", 11), wrap="word", height=14)
+        self.txt.pack(fill="both", expand=True)
+        self.txt.bind("<KeyRelease>", lambda e: self._calc())
+        # 统计
+        card = RoundedContainer(wrap, radius=14, padx=16, pady=16)
+        card.pack(fill="x", pady=(12,0))
+        stats = tk.Frame(card.inner, bg=THEME["CARD"])
+        stats.pack(fill="x")
+        self.stats = {}
+        keys = [("总字符", "chars"), ("中文字符", "cn"), ("英文单词", "words"), ("行数", "lines"),
+                ("非空字符", "nospace"), ("数字", "nums")]
+        for i, (name, key) in enumerate(keys):
+            col, row = i % 3, i // 3
+            cell = tk.Frame(stats, bg=THEME["BG"])
+            cell.grid(row=row, column=col, padx=6, pady=6, sticky="nsew")
+            tk.Label(cell, text=name, fg=THEME["MUTED"], bg=THEME["BG"],
+                     font=("Microsoft YaHei", 9)).pack(pady=(8,0))
+            v = tk.Label(cell, text="0", fg=THEME["PRIMARY"], bg=THEME["BG"],
+                         font=("Consolas", 18, "bold"))
+            v.pack(pady=(0,8))
+            self.stats[key] = v
+            stats.grid_columnconfigure(col, weight=1)
+        RoundedButton(card.inner, "立即统计", command=self._calc, width=120, height=34,
+                      radius=8, bg=THEME["CARD"], fg=THEME["TEXT"]).pack(anchor="e", pady=(8,0))
+        self._calc()
+
+    def _calc(self):
+        s = self.txt.get("1.0", "end").rstrip("\n")
+        self.stats["chars"].configure(text=str(len(s)))
+        cn = len(re.findall(r"[\u4e00-\u9fa5]", s))
+        self.stats["cn"].configure(text=str(cn))
+        words = len(re.findall(r"[A-Za-z_]+", s))
+        self.stats["words"].configure(text=str(words))
+        lines = len(s.splitlines()) if s else 0
+        self.stats["lines"].configure(text=str(lines))
+        nospace = len(re.sub(r"\s", "", s))
+        self.stats["nospace"].configure(text=str(nospace))
+        nums = len(re.findall(r"\d", s))
+        self.stats["nums"].configure(text=str(nums))
+
+# =========================================================
+#  8. 文本对比
+# =========================================================
+class DiffPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "文本对比")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        cols = tk.Frame(wrap, bg=THEME["BG"])
+        cols.pack(fill="both", expand=True)
+        # 左
+        lc = tk.Frame(cols, bg=THEME["BG"])
+        lc.pack(side="left", fill="both", expand=True, padx=(0,6))
+        tk.Label(lc, text="原文 A", anchor="w", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(fill="x", pady=(0,4))
+        r1 = RoundedContainer(lc, radius=12, padx=10, pady=10)
+        r1.pack(fill="both", expand=True)
+        self.t1 = tk.Text(r1.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                          insertbackground=THEME["TEXT"], bd=0, font=("Consolas", 11), wrap="word")
+        self.t1.pack(fill="both", expand=True)
+        # 右
+        rc2 = tk.Frame(cols, bg=THEME["BG"])
+        rc2.pack(side="left", fill="both", expand=True, padx=(6,0))
+        tk.Label(rc2, text="原文 B", anchor="w", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(fill="x", pady=(0,4))
+        r2 = RoundedContainer(rc2, radius=12, padx=10, pady=10)
+        r2.pack(fill="both", expand=True)
+        self.t2 = tk.Text(r2.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                          insertbackground=THEME["TEXT"], bd=0, font=("Consolas", 11), wrap="word")
+        self.t2.pack(fill="both", expand=True)
+        # 按钮 + 结果
+        bar = tk.Frame(wrap, bg=THEME["BG"])
+        bar.pack(fill="x", pady=(10, 6))
+        RoundedButton(bar, "🔍 对比文本", command=self._diff, width=140, height=36, radius=10).pack(side="left")
+        self.ratio_label = tk.Label(bar, text="相似度: --", fg=THEME["MUTED"], bg=THEME["BG"],
+                                    font=("Microsoft YaHei", 11, "bold"))
+        self.ratio_label.pack(side="left", padx=20)
+        out_rc = RoundedContainer(wrap, radius=12, padx=12, pady=12)
+        out_rc.pack(fill="x")
+        self.out = tk.Text(out_rc.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                           bd=0, font=("Consolas", 10), height=8, wrap="word")
+        self.out.pack(fill="both")
+        self.out.tag_configure("same", foreground=THEME["MUTED"])
+        self.out.tag_configure("diff", foreground=THEME["ERROR"])
+        self.out.tag_configure("add", foreground=THEME["SUCCESS"])
+        self.out.configure(state="disabled")
+
+    def _diff(self):
+        a = self.t1.get("1.0", "end").splitlines()
+        b = self.t2.get("1.0", "end").splitlines()
+        sm = difflib.SequenceMatcher(None, a, b)
+        ratio = sm.ratio() * 100
+        self.ratio_label.configure(text=f"相似度: {ratio:.2f}%")
+        self.out.configure(state="normal")
+        self.out.delete("1.0", "end")
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            if tag == "equal":
+                for line in a[i1:i2]:
+                    self.out.insert("end", f"  {line}\n", "same")
+            elif tag == "replace":
+                for line in a[i1:i2]:
+                    self.out.insert("end", f"- {line}\n", "diff")
+                for line in b[j1:j2]:
+                    self.out.insert("end", f"+ {line}\n", "add")
+            elif tag == "delete":
+                for line in a[i1:i2]:
+                    self.out.insert("end", f"- {line}\n", "diff")
+            elif tag == "insert":
+                for line in b[j1:j2]:
+                    self.out.insert("end", f"+ {line}\n", "add")
+        self.out.configure(state="disabled")
+
+# =========================================================
+#  9. Markdown 预览（简化版）
+# =========================================================
+class MarkdownPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "Markdown 预览")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        cols = tk.PanedWindow(wrap, orient="horizontal", bg=THEME["BG"],
+                              sashwidth=4, sashrelief="flat", bd=0)
+        cols.pack(fill="both", expand=True)
+        # 左: 编辑器
+        left = tk.Frame(cols, bg=THEME["BG"])
+        cols.add(left, minsize=240)
+        tk.Label(left, text="✏️  Markdown 编辑器", anchor="w", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(fill="x", pady=(0,4))
+        rc1 = RoundedContainer(left, radius=12, padx=10, pady=10)
+        rc1.pack(fill="both", expand=True)
+        self.txt = tk.Text(rc1.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                           insertbackground=THEME["TEXT"], bd=0,
+                           font=("Consolas", 11), wrap="word")
+        self.txt.pack(fill="both", expand=True)
+        sample = """# 标题 H1
+## 标题 H2
+### 标题 H3
+这是 **粗体** 与 *斜体* 文本。
+
+`行内代码` 使用反引号。
+
+    代码块第一行
+    代码块第二行
+
+- 列表项 A
+- 列表项 B
+- 列表项 C
+
+> 引用块示例。
+普通段落文字。
+"""
+        self.txt.insert("1.0", sample)
+        self.txt.bind("<KeyRelease>", lambda e: self._render())
+        # 右: 预览
+        right = tk.Frame(cols, bg=THEME["BG"])
+        cols.add(right, minsize=240)
+        tk.Label(right, text="👁  预览", anchor="w", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(fill="x", pady=(0,4))
+        rc2 = RoundedContainer(right, radius=12, padx=12, pady=12)
+        rc2.pack(fill="both", expand=True)
+        self.out = tk.Text(rc2.inner, bg=THEME["CARD"], fg=THEME["TEXT"], bd=0,
+                           font=("Microsoft YaHei", 11), wrap="word", spacing1=4)
+        self.out.pack(fill="both", expand=True)
+        self.out.configure(state="disabled")
+        # 标签
+        self.out.tag_configure("h1", font=("Microsoft YaHei", 20, "bold"),
+                               foreground=THEME["PRIMARY"], spacing3=10)
+        self.out.tag_configure("h2", font=("Microsoft YaHei", 18, "bold"),
+                               foreground=THEME["PRIMARY"], spacing3=8)
+        self.out.tag_configure("h3", font=("Microsoft YaHei", 14, "bold"),
+                               foreground=THEME["TEXT"], spacing3=6)
+        self.out.tag_configure("bold", font=("Microsoft YaHei", 11, "bold"))
+        self.out.tag_configure("italic", font=("Microsoft YaHei", 11, "italic"))
+        self.out.tag_configure("code", font=("Consolas", 11),
+                               background=THEME["HOVER"], foreground=THEME["PRIMARY"])
+        self.out.tag_configure("codeblock", font=("Consolas", 11),
+                               background=THEME["BG"], foreground=THEME["SUCCESS"], lmargin1=14, lmargin2=14)
+        self.out.tag_configure("quote", foreground=THEME["MUTED"],
+                               lmargin1=12, lmargin2=12, font=("Microsoft YaHei", 11, "italic"))
+        self.out.tag_configure("list", lmargin1=16, lmargin2=28)
+        RoundedButton(wrap, "🔄 重新渲染", command=self._render, width=140, height=32,
+                      radius=8, bg=THEME["CARD"], fg=THEME["TEXT"]).pack(anchor="e", pady=(8,0))
+        self.after(60, self._render)
+
+    def _inline(self, text, line_tags):
+        # **粗体**
+        def sub_bold(m):
+            self.out.insert("end", m.group(1), line_tags + ["bold"])
+            return ""
+        # *斜体*
+        def sub_ital(m):
+            self.out.insert("end", m.group(1), line_tags + ["italic"])
+            return ""
+        # `code`
+        def sub_code(m):
+            self.out.insert("end", m.group(1), line_tags + ["code"])
+            return ""
+        # 处理顺序 code -> bold -> italic -> 剩余文字
+        i = 0
+        pattern = re.compile(r"`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*")
+        while i < len(text):
+            m = pattern.search(text, i)
+            if not m:
+                self.out.insert("end", text[i:], line_tags)
+                break
+            if m.start() > i:
+                self.out.insert("end", text[i:m.start()], line_tags)
+            if m.group(1):
+                self.out.insert("end", m.group(1), line_tags + ["code"])
+            elif m.group(2):
+                self.out.insert("end", m.group(2), line_tags + ["bold"])
+            elif m.group(3):
+                self.out.insert("end", m.group(3), line_tags + ["italic"])
+            i = m.end()
+
+    def _render(self):
+        self.out.configure(state="normal")
+        self.out.delete("1.0", "end")
+        lines = self.txt.get("1.0", "end").splitlines()
+        in_codeblock = False
+        for raw in lines:
+            line = raw.rstrip()
+            if line.startswith("    ") or line.startswith("\t"):
+                # 代码块
+                self.out.insert("end", (line if line.startswith("    ") else line[1:]) + "\n", ["codeblock"])
+                in_codeblock = False
+                continue
+            if line.startswith("### "):
+                self._inline(line[4:], ["h3"])
+                self.out.insert("end", "\n")
+            elif line.startswith("## "):
+                self._inline(line[3:], ["h2"])
+                self.out.insert("end", "\n")
+            elif line.startswith("# "):
+                self._inline(line[2:], ["h1"])
+                self.out.insert("end", "\n")
+            elif line.startswith("> "):
+                self._inline(line[2:], ["quote"])
+                self.out.insert("end", "\n")
+            elif line.startswith("- ") or line.startswith("* "):
+                self.out.insert("end", "• ", ["list"])
+                self._inline(line[2:], ["list"])
+                self.out.insert("end", "\n")
+            elif re.match(r"\d+\. ", line):
+                self._inline(line, ["list"])
+                self.out.insert("end", "\n")
+            elif not line:
+                self.out.insert("end", "\n")
+            else:
+                self._inline(line, [])
+                self.out.insert("end", "\n")
+            in_codeblock = False
+        self.out.configure(state="disabled")
+
+# =========================================================
+#  10. 正则测试
+# =========================================================
+class RegexPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "正则表达式测试")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 输入
+        top = RoundedContainer(wrap, radius=14, padx=14, pady=12)
+        top.pack(fill="x")
+        tk.Label(top.inner, text="正则表达式 Pattern:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
+        pat_rc = RoundedContainer(top.inner, bg=THEME["BG"], radius=10, padx=10, pady=4)
+        pat_rc.grid(row=0, column=1, sticky="we", padx=8, pady=4)
+        self.pat = tk.Entry(pat_rc.inner, bg=THEME["BG"], fg=THEME["TEXT"],
+                            insertbackground=THEME["TEXT"], bd=0, font=("Consolas", 12))
+        self.pat.pack(fill="x")
+        self.pat.insert(0, r"\d+")
+        # Flags
+        flag_row = tk.Frame(top.inner, bg=THEME["CARD"])
+        flag_row.grid(row=1, column=0, columnspan=2, sticky="w", pady=(6,0))
+        self.flags = {}
+        for name, val in [("忽略大小写 IGNORECASE", re.I), ("多行 MULTILINE", re.M),
+                          ("点匹配所有 DOTALL", re.S), ("忽略空格 VERBOSE", re.X)]:
+            v = tk.BooleanVar(value=False)
+            cb = tk.Checkbutton(flag_row, text=name, variable=v, bg=THEME["CARD"], fg=THEME["TEXT"],
+                                selectcolor=THEME["CARD"], activebackground=THEME["CARD"],
+                                activeforeground=THEME["TEXT"], font=("Microsoft YaHei", 9))
+            cb.pack(side="left", padx=6)
+            self.flags[name] = (v, val)
+        top.inner.grid_columnconfigure(1, weight=1)
+        # 文本区 + 结果
+        mid = tk.Frame(wrap, bg=THEME["BG"])
+        mid.pack(fill="both", expand=True, pady=(10,0))
+        # 测试文本
+        left = tk.Frame(mid, bg=THEME["BG"])
+        left.pack(side="left", fill="both", expand=True, padx=(0,6))
+        tk.Label(left, text="测试文本", anchor="w", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(fill="x", pady=(0,4))
+        r1 = RoundedContainer(left, radius=12, padx=10, pady=10)
+        r1.pack(fill="both", expand=True)
+        self.txt = tk.Text(r1.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                           insertbackground=THEME["TEXT"], bd=0,
+                           font=("Consolas", 11), wrap="word")
+        self.txt.pack(fill="both", expand=True)
+        self.txt.insert("1.0", "订单号 A123 金额 456 元，电话 13812345678，日期 2026-08-19。")
+        # 结果
+        right = tk.Frame(mid, bg=THEME["BG"])
+        right.pack(side="left", fill="both", expand=True, padx=(6,0))
+        tk.Label(right, text="匹配结果", anchor="w", fg=THEME["TEXT"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10, "bold")).pack(fill="x", pady=(0,4))
+        r2 = RoundedContainer(right, radius=12, padx=10, pady=10)
+        r2.pack(fill="both", expand=True)
+        self.out = tk.Text(r2.inner, bg=THEME["CARD"], fg=THEME["TEXT"],
+                           bd=0, font=("Consolas", 11), wrap="word")
+        self.out.pack(fill="both", expand=True)
+        self.out.tag_configure("match", background=THEME["PRIMARY"], foreground="white")
+        self.out.tag_configure("group", foreground=THEME["SUCCESS"])
+        self.out.configure(state="disabled")
+        # 按钮
+        bar = tk.Frame(wrap, bg=THEME["BG"])
+        bar.pack(fill="x", pady=8)
+        RoundedButton(bar, "▶ 运行匹配", command=self._run, width=140, height=36, radius=10).pack(side="left", padx=4)
+        self.count_lbl = tk.Label(bar, text="", bg=THEME["BG"], fg=THEME["MUTED"],
+                                  font=("Microsoft YaHei", 10, "bold"))
+        self.count_lbl.pack(side="left", padx=12)
+
+    def _run(self):
+        try:
+            pat = self.pat.get()
+            flag = 0
+            for (v, val) in self.flags.values():
+                if v.get():
+                    flag |= val
+            rx = re.compile(pat, flag)
+            text = self.txt.get("1.0", "end")
+            matches = list(rx.finditer(text))
+            # 显示带高亮的文本
+            self.out.configure(state="normal")
+            self.out.delete("1.0", "end")
+            last = 0
+            for m in matches:
+                self.out.insert("end", text[last:m.start()])
+                self.out.insert("end", m.group(0), "match")
+                last = m.end()
+            self.out.insert("end", text[last:])
+            # 详细
+            if matches:
+                self.out.insert("end", "\n\n--- 详情 ---\n", "group")
+                for idx, m in enumerate(matches, 1):
+                    self.out.insert("end", f"\n匹配 #{idx}: [{m.start()}:{m.end()}]\n", "group")
+                    self.out.insert("end", f"  值: {m.group(0)!r}\n")
+                    for gi, gv in enumerate(m.groups(), 1):
+                        self.out.insert("end", f"  组 {gi}: {gv!r}\n")
+            self.out.configure(state="disabled")
+            self.count_lbl.configure(text=f"✅ 找到 {len(matches)} 个匹配")
+        except re.error as e:
+            messagebox.showerror("正则错误", str(e))
+            self.count_lbl.configure(text="❌ 正则错误")
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+# =========================================================
+#  11. 番茄钟
+# =========================================================
+class PomodoroPage(BasePage):
+    def __init__(self, master, app):
+        self.total = 25 * 60
+        self.remain = 25 * 60
+        self.running = False
+        self._job = None
+        super().__init__(master, app, "番茄钟")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        card = RoundedContainer(wrap, radius=16, padx=24, pady=24)
+        card.pack(fill="both", expand=True)
+        # 模式选择
+        modes = tk.Frame(card.inner, bg=THEME["CARD"])
+        modes.pack(pady=(0, 16))
+        self.mode_btns = {}
+        for label, secs in [("🍅 专注 25 分", 25*60), ("☕ 短休息 5 分", 5*60), ("🌿 长休息 15 分", 15*60)]:
+            b = RoundedButton(modes, label, command=lambda s=secs, l=label: self._set_mode(s, l),
+                              width=150, height=36, radius=10, bg=THEME["BG"], fg=THEME["TEXT"])
+            b.pack(side="left", padx=6)
+            self.mode_btns[label] = b
+        # 大圆倒计时
+        self.canvas = tk.Canvas(card.inner, width=320, height=320, bg=THEME["CARD"], highlightthickness=0)
+        self.canvas.pack(pady=8)
+        self.canvas.bind("<Configure>", lambda e: self._draw())
+        # 标签
+        self.mode_label = tk.Label(card.inner, text="专注模式", bg=THEME["CARD"], fg=THEME["MUTED"],
+                                   font=("Microsoft YaHei", 12, "bold"))
+        self.mode_label.pack(pady=2)
+        # 控制按钮
+        ctrl = tk.Frame(card.inner, bg=THEME["CARD"])
+        ctrl.pack(pady=16)
+        self.btn_start = RoundedButton(ctrl, "▶ 开始", command=self._start, width=110, height=40, radius=10)
+        self.btn_start.pack(side="left", padx=6)
+        self.btn_pause = RoundedButton(ctrl, "⏸ 暂停", command=self._pause, width=110, height=40,
+                                       radius=10, bg=THEME["WARNING"])
+        self.btn_pause.pack(side="left", padx=6)
+        RoundedButton(ctrl, "↺ 重置", command=self._reset, width=110, height=40, radius=10,
+                      bg=THEME["CARD"], fg=THEME["TEXT"]).pack(side="left", padx=6)
+        self._set_mode(25*60, "🍅 专注 25 分")
+        self.after(30, self._draw)
+
+    def _set_mode(self, secs, label):
+        self.total = secs
+        self.remain = secs
+        self.running = False
+        if self._job:
+            self.after_cancel(self._job); self._job = None
+        nice = label.replace("🍅 ", "").replace("☕ ", "").replace("🌿 ", "")
+        self.mode_label.configure(text=nice)
+        for k, b in self.mode_btns.items():
+            if k == label:
+                b.set_bg(THEME["PRIMARY"]); b._fg = "white"; b._draw()
+            else:
+                b.set_bg(THEME["BG"]); b._fg = THEME["TEXT"]; b._draw()
+        self.btn_start.set_text("▶ 开始")
         self._draw()
 
     def _draw(self):
-        self._canvas.delete('all')
-        w = self._canvas.winfo_width()
-        h = self._canvas.winfo_height()
-        if w < 10 or h < 10:
-            self._canvas.after(50, self._draw)
-            return
-        r = self._radius
-        self._canvas.create_oval(0, 0, 2*r, 2*r, fill=self._bg, outline='')
-        self._canvas.create_oval(w-2*r, 0, w, 2*r, fill=self._bg, outline='')
-        self._canvas.create_oval(0, h-2*r, 2*r, h, fill=self._bg, outline='')
-        self._canvas.create_oval(w-2*r, h-2*r, w, h, fill=self._bg, outline='')
-        self._canvas.create_rectangle(r, 0, w-r, h, fill=self._bg, outline='')
-        self._canvas.create_rectangle(0, r, w, h-r, fill=self._bg, outline='')
-        self._entry.place_configure(width=w-10, height=h-4)
+        c = self.canvas
+        c.delete("all")
+        cx, cy = 160, 160
+        r = 130
+        # 背景圆
+        c.create_oval(cx-r, cy-r, cx+r, cy+r, fill=THEME["BG"], outline="")
+        # 进度
+        if self.total > 0:
+            prog = 1 - self.remain / self.total
+        else:
+            prog = 0
+        if prog > 0:
+            # 画圆弧 (从 -90° 开始)
+            extent = int(360 * prog)
+            # 用多条线近似 arc
+            import math
+            points = []
+            steps = 180
+            for i in range(steps + 1):
+                ang = math.radians(-90 + (extent * i / steps))
+                points.append(cx + r * math.cos(ang))
+                points.append(cy + r * math.sin(ang))
+            if len(points) >= 4:
+                for i in range(0, len(points)-2, 2):
+                    c.create_line(points[i], points[i+1], points[i+2], points[i+3],
+                                  fill=THEME["PRIMARY"], width=14, capstyle="round")
+        # 内圈
+        r2 = r - 24
+        c.create_oval(cx-r2, cy-r2, cx+r2, cy+r2, fill=THEME["CARD"], outline="")
+        # 时间文本
+        m, s = divmod(max(0, self.remain), 60)
+        c.create_text(cx, cy, text=f"{m:02d}:{s:02d}", fill=THEME["TEXT"],
+                      font=("Consolas", 52, "bold"))
 
-    def _on_resize(self, event):
+    def _start(self):
+        if self.remain <= 0:
+            return
+        self.running = True
+        self.btn_start.set_text("⏵ 运行中")
+        self._tick()
+
+    def _pause(self):
+        self.running = False
+        if self._job:
+            self.after_cancel(self._job); self._job = None
+        self.btn_start.set_text("▶ 继续")
+
+    def _reset(self):
+        self.running = False
+        if self._job:
+            self.after_cancel(self._job); self._job = None
+        self.remain = self.total
+        self.btn_start.set_text("▶ 开始")
         self._draw()
 
-    def get(self):
-        return self._entry.get()
-
-    def set(self, text):
-        self._entry.delete(0, 'end')
-        self._entry.insert(0, text)
-
-    def config(self, **kwargs):
-        if 'bg' in kwargs:
-            self._bg = kwargs['bg']
-            self._entry.configure(bg=self._bg)
-            self._canvas.configure(bg=self._bg)
-            self._draw()
-
-    def bind(self, *args, **kwargs):
-        return self._entry.bind(*args, **kwargs)
-
-
-class DeciderPage(tk.Frame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, bg=Theme.BG, **kwargs)
-        self._build_ui()
-        self._load_data()
-
-    def _build_ui(self):
-        tk.Label(self, text="🎲 随机决定器", font=Theme.FONT_HEADER,
-                 bg=Theme.BG, fg=Theme.TEXT).pack(pady=(10, 5))
-        nb = ttk.Notebook(self)
-        nb.pack(fill='both', expand=True, padx=15, pady=5)
-        for cls_fn, title in [
-            (self._build_custom, '  自定义选项  '),
-            (self._build_lots, '  抽签  '),
-            (self._build_coin, '  抛硬币  '),
-        ]:
-            tab = tk.Frame(nb, bg=Theme.CARD)
-            nb.add(tab, text=title)
-            cls_fn(tab)
-
-    def _build_custom(self, parent):
-        tk.Label(parent, text="选项列表", font=Theme.FONT_BODY,
-                 bg=Theme.CARD, fg=Theme.TEXT_SECONDARY).pack(anchor='w', padx=15, pady=(12, 3))
-
-        scroll_wrap = tk.Frame(parent, bg=Theme.CARD)
-        scroll_wrap.pack(fill='both', expand=True, padx=15, pady=(0, 5))
-        canvas = tk.Canvas(scroll_wrap, bg=Theme.CARD, highlightthickness=0, bd=0)
-        scrollbar = ttk.Scrollbar(scroll_wrap, orient='vertical', command=canvas.yview)
-        self.custom_inner = tk.Frame(canvas, bg=Theme.CARD)
-        self.custom_inner.bind('<Configure>',
-            lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
-        canvas.create_window((0, 0), window=self.custom_inner, anchor='nw')
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
-        self._custom_canvas = canvas
-        self.option_entries = []
-
-        add_frame = tk.Frame(parent, bg=Theme.CARD)
-        add_frame.pack(fill='x', padx=15, pady=(2, 0))
-        add_lbl = tk.Label(add_frame, text="➕ 添加选项",
-                 font=Theme.FONT_SMALL, bg=Theme.CARD, fg=Theme.TEXT_MUTED,
-                 cursor='hand2')
-        add_lbl.pack(side='left')
-        add_lbl.bind('<Button-1>', lambda e: self._add_option_row(''))
-        for _ in range(3):
-            self._add_option_row('')
-
-        brow = tk.Frame(parent, bg=Theme.CARD)
-        brow.pack(pady=6)
-        RoundedButton(brow, text="💾 保存", command=self._save_options,
-                       bg=Theme.SUCCESS, width=76, height=26).pack(side='left', padx=5)
-        RoundedButton(brow, text="🎯 随机选一个", command=self._pick_one,
-                       bg=Theme.ACCENT, width=84, height=26).pack(side='left', padx=5)
-        RoundedButton(brow, text="🎲 随机选N个", command=self._pick_n,
-                       bg=Theme.PRIMARY, width=84, height=26).pack(side='left', padx=5)
-        rc = tk.Frame(parent, bg='#FFF8E1')
-        rc.pack(fill='x', padx=15, pady=(5, 12))
-        tk.Label(rc, text="结果", font=Theme.FONT_SMALL, bg='#FFF8E1',
-                 fg=Theme.TEXT_SECONDARY).pack(anchor='w', padx=12, pady=(8, 0))
-        self.custom_result = tk.Label(rc, text="点击按钮开始",
-                                       font=('Microsoft YaHei', 14, 'bold'),
-                                       bg='#FFF8E1', fg=Theme.ACCENT,
-                                       wraplength=320, justify='left')
-        self.custom_result.pack(pady=(2, 10), padx=12, anchor='w')
-
-    def _add_option_row(self, text=''):
-        row = tk.Frame(self.custom_inner, bg=Theme.CARD)
-        row.pack(fill='x', padx=5, pady=2)
-        idx_label = tk.Label(row, text=f'{len(self.option_entries)+1}.',
-                             font=Theme.FONT_SMALL, bg=Theme.CARD,
-                             fg=Theme.TEXT_MUTED, width=3)
-        idx_label.pack(side='left')
-        entry = tk.Entry(row, font=Theme.FONT_BODY, bd=0,
-                         highlightthickness=1, highlightbackground=Theme.BORDER,
-                         highlightcolor=Theme.PRIMARY)
-        entry.insert(0, text)
-        entry.pack(side='left', fill='x', expand=True, padx=(2, 5))
-        del_btn = tk.Label(row, text='✕', font=Theme.FONT_SMALL, bg=Theme.CARD,
-                           fg=Theme.DANGER, cursor='hand2')
-        del_btn.pack(side='right', padx=(2, 5))
-        del_btn.bind('<Button-1>', lambda e, r=row, en=entry: self._remove_option_row(r, en))
-        self.option_entries.append(entry)
-
-    def _remove_option_row(self, row, entry):
-        try:
-            row.destroy()
-            if entry in self.option_entries:
-                self.option_entries.remove(entry)
-            for i, w in enumerate(self.custom_inner.winfo_children()):
-                for child in w.winfo_children():
-                    try:
-                        if '.' in str(child.cget('text')):
-                            child.config(text=f'{i+1}.')
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-
-    def _get_options_text(self):
-        return '\n'.join(e.get().strip() for e in self.option_entries if e.winfo_exists() and e.get().strip())
-
-    def _build_lots(self, parent):
-        tk.Label(parent, text="签文列表", font=Theme.FONT_BODY,
-                 bg=Theme.CARD, fg=Theme.TEXT_SECONDARY).pack(anchor='w', padx=15, pady=(12, 3))
-
-        scroll_wrap = tk.Frame(parent, bg=Theme.CARD)
-        scroll_wrap.pack(fill='both', expand=True, padx=15, pady=(0, 5))
-        canvas = tk.Canvas(scroll_wrap, bg=Theme.CARD, highlightthickness=0, bd=0)
-        scrollbar = ttk.Scrollbar(scroll_wrap, orient='vertical', command=canvas.yview)
-        self.lots_inner = tk.Frame(canvas, bg=Theme.CARD)
-        self.lots_inner.bind('<Configure>',
-            lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
-        canvas.create_window((0, 0), window=self.lots_inner, anchor='nw')
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
-        self._lots_canvas = canvas
-        self.lot_entries = []
-
-        add_frame = tk.Frame(parent, bg=Theme.CARD)
-        add_frame.pack(fill='x', padx=15, pady=(2, 0))
-        add_lbl = tk.Label(add_frame, text="➕ 添加签文",
-                 font=Theme.FONT_SMALL, bg=Theme.CARD, fg=Theme.TEXT_MUTED,
-                 cursor='hand2')
-        add_lbl.pack(side='left')
-        add_lbl.bind('<Button-1>', lambda e: self._add_lot_row(''))
-        for lot in ['大吉', '中吉', '小吉', '吉', '末吉', '凶', '大凶']:
-            self._add_lot_row(lot)
-
-        brow = tk.Frame(parent, bg=Theme.CARD)
-        brow.pack(pady=6)
-        RoundedButton(brow, text="💾 保存签文", command=self._save_lots,
-                       bg=Theme.SUCCESS, width=92, height=26).pack(side='left', padx=5)
-        RoundedButton(brow, text="🎋 抽签", command=self._draw_lot_anim,
-                       bg='#E91E63', width=92, height=26).pack(side='left', padx=5)
-        rc = tk.Frame(parent, bg='#FCE4EC')
-        rc.pack(fill='x', padx=15, pady=(5, 12))
-        self.lot_result = tk.Label(rc, text="心诚则灵",
-                                    font=('Microsoft YaHei', 14, 'bold'),
-                                    bg='#FCE4EC', fg='#880E4F',
-                                    wraplength=320, justify='center')
-        self.lot_result.pack(pady=12, padx=15)
-
-    def _add_lot_row(self, text=''):
-        row = tk.Frame(self.lots_inner, bg=Theme.CARD)
-        row.pack(fill='x', padx=5, pady=2)
-        idx_label = tk.Label(row, text=f'{len(self.lot_entries)+1}.',
-                             font=Theme.FONT_SMALL, bg=Theme.CARD,
-                             fg=Theme.TEXT_MUTED, width=3)
-        idx_label.pack(side='left')
-        entry = tk.Entry(row, font=Theme.FONT_BODY, bd=0,
-                         highlightthickness=1, highlightbackground=Theme.BORDER,
-                         highlightcolor=Theme.PRIMARY)
-        entry.insert(0, text)
-        entry.pack(side='left', fill='x', expand=True, padx=(2, 5))
-        del_btn = tk.Label(row, text='✕', font=Theme.FONT_SMALL, bg=Theme.CARD,
-                           fg=Theme.DANGER, cursor='hand2')
-        del_btn.pack(side='right', padx=(2, 5))
-        del_btn.bind('<Button-1>', lambda e, r=row, en=entry: self._remove_lot_row(r, en))
-        self.lot_entries.append(entry)
-
-    def _remove_lot_row(self, row, entry):
-        try:
-            row.destroy()
-            if entry in self.lot_entries:
-                self.lot_entries.remove(entry)
-            for i, w in enumerate(self.lots_inner.winfo_children()):
-                for child in w.winfo_children():
-                    try:
-                        if '.' in str(child.cget('text')):
-                            child.config(text=f'{i+1}.')
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-
-    def _get_lots_text(self):
-        return '\n'.join(e.get().strip() for e in self.lot_entries if e.winfo_exists() and e.get().strip())
-
-    def _build_coin(self, parent):
-        c = tk.Frame(parent, bg=Theme.CARD)
-        c.pack(expand=True, fill='both')
-
-        self.coin_canvas = tk.Canvas(c, width=160, height=110,
-                                      bg=Theme.CARD, highlightthickness=0)
-        self.coin_canvas.pack(pady=(15, 5))
-        self._draw_coin_canvas('idle')
-
-        self.coin_label = tk.Label(c, text="点击按钮抛硬币",
-                                    font=('Microsoft YaHei', 18, 'bold'),
-                                    bg=Theme.CARD, fg=Theme.TEXT_MUTED)
-        self.coin_label.pack(pady=5)
-        RoundedButton(c, text="🪙 抛 硬 币", command=self._flip_coin_anim,
-                       bg=Theme.WARNING, fg='#333',
-                       width=84, height=26).pack(pady=12)
-        self.coin_stats = tk.Label(c, text="正面: 0 次  |  反面: 0 次",
-                                    font=Theme.FONT_SMALL, bg=Theme.CARD,
-                                    fg=Theme.TEXT_MUTED)
-        self.coin_stats.pack()
-        self.coin_count = {'heads': 0, 'tails': 0}
-
-    def _draw_coin_canvas(self, state):
-        self.coin_canvas.delete('all')
-        cx, cy = 80, 55
-        r_outer = 40
-        r_inner = 34
-        if state == 'idle':
-            # 3D coin appearance with rim and shine
-            self.coin_canvas.create_oval(cx - r_outer, cy - r_outer,
-                                          cx + r_outer, cy + r_outer,
-                                          fill='#B8860B', outline='#8B6914', width=2)
-            self.coin_canvas.create_oval(cx - r_inner, cy - r_inner,
-                                          cx + r_inner, cy + r_inner,
-                                          fill='#FFD700', outline='#DAA520', width=2)
-            # Inner circle decoration
-            self.coin_canvas.create_oval(cx - 25, cy - 25, cx + 25, cy + 25,
-                                          outline='#DAA520', width=1)
-            # Shine highlight
-            self.coin_canvas.create_arc(cx - 28, cy - 30, cx + 28, cy + 14,
-                                         start=200, extent=100,
-                                         style='arc', outline='#FFFFFF', width=2)
-            self.coin_canvas.create_text(cx, cy + 2, text="正 反",
-                                           font=('Microsoft YaHei', 12, 'bold'),
-                                           fill='#8B6914')
-        elif state == 'flip1':
-            # Side view - thin ellipse
-            self.coin_canvas.create_oval(cx - r_outer * 0.25, cy - r_outer,
-                                          cx + r_outer * 0.25, cy + r_outer,
-                                          fill='#DAA520', outline='#8B6914', width=2)
-            self.coin_canvas.create_text(cx, cy, text="!",
-                                           font=('Arial', 18, 'bold'),
-                                           fill='#5D4E37')
-        elif state == 'flip2':
-            # Almost edge-on
-            self.coin_canvas.create_oval(cx - r_outer * 0.08, cy - r_outer,
-                                          cx + r_outer * 0.08, cy + r_outer,
-                                          fill='#B8860B', outline='#8B6914', width=2)
-        elif state == 'heads':
-            # Heads - 正面 with "正" character
-            self.coin_canvas.create_oval(cx - r_outer, cy - r_outer,
-                                          cx + r_outer, cy + r_outer,
-                                          fill='#B8860B', outline='#8B6914', width=2)
-            self.coin_canvas.create_oval(cx - r_inner, cy - r_inner,
-                                          cx + r_inner, cy + r_inner,
-                                          fill='#FFA726', outline='#E65100', width=2)
-            # Decorative ring
-            self.coin_canvas.create_oval(cx - 28, cy - 28, cx + 28, cy + 28,
-                                          outline='#E65100', width=1)
-            # Character 正
-            self.coin_canvas.create_text(cx, cy - 4, text="正",
-                                           font=('Microsoft YaHei', 22, 'bold'),
-                                           fill='#BF360C')
-            self.coin_canvas.create_text(cx, cy + 20, text="HEADS",
-                                           font=('Arial', 7, 'bold'),
-                                           fill='#BF360C')
-            # Small decorative dots
-            for dx, dy in [(-22, -18), (22, -18), (-22, 18), (22, 18)]:
-                self.coin_canvas.create_oval(cx+dx-2, cy+dy-2, cx+dx+2, cy+dy+2,
-                                              fill='#E65100', outline='')
-        elif state == 'tails':
-            # Tails - 反面 with "反" character
-            self.coin_canvas.create_oval(cx - r_outer, cy - r_outer,
-                                          cx + r_outer, cy + r_outer,
-                                          fill='#5C6BC0', outline='#283593', width=2)
-            self.coin_canvas.create_oval(cx - r_inner, cy - r_inner,
-                                          cx + r_inner, cy + r_inner,
-                                          fill='#42A5F5', outline='#0D47A1', width=2)
-            # Decorative ring
-            self.coin_canvas.create_oval(cx - 28, cy - 28, cx + 28, cy + 28,
-                                          outline='#0D47A1', width=1)
-            # Character 反
-            self.coin_canvas.create_text(cx, cy - 4, text="反",
-                                           font=('Microsoft YaHei', 22, 'bold'),
-                                           fill='#0D47A1')
-            self.coin_canvas.create_text(cx, cy + 20, text="TAILS",
-                                           font=('Arial', 7, 'bold'),
-                                           fill='#0D47A1')
-            # Small decorative dots
-            for dx, dy in [(-22, -18), (22, -18), (-22, 18), (22, 18)]:
-                self.coin_canvas.create_oval(cx+dx-2, cy+dy-2, cx+dx+2, cy+dy+2,
-                                              fill='#0D47A1', outline='')
-
-    def _load_data(self):
-        try:
-            data = DataManager.load('decider.json', {})
-            options = data.get('options', '')
-            lots = data.get('lots', '')
-            self.coin_count = data.get('coin_stats', {'heads': 0, 'tails': 0})
-            self._update_stats()
-            if options.strip():
-                for w in self.custom_inner.winfo_children():
-                    w.destroy()
-                self.option_entries = []
-                for line in options.split('\n'):
-                    self._add_option_row(line.strip())
-            if lots.strip():
-                for w in self.lots_inner.winfo_children():
-                    w.destroy()
-                self.lot_entries = []
-                for line in lots.split('\n'):
-                    self._add_lot_row(line.strip())
-        except Exception:
-            pass
-
-    def _save_options(self):
-        try:
-            data = DataManager.load('decider.json', {})
-            data['options'] = self._get_options_text()
-            data['lots'] = self._get_lots_text()
-            data['coin_stats'] = self.coin_count
-            DataManager.save('decider.json', data)
-            self.custom_result.config(text="✅ 已保存", fg=Theme.SUCCESS)
-            AnimationEngine.glow_label(self.custom_result, Theme.SUCCESS)
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _pick_one(self):
-        try:
-            opts = [o.strip() for o in self._get_options_text().split('\n') if o.strip()]
-            if not opts:
-                self.custom_result.config(text="⚠️ 请先输入选项", fg=Theme.WARNING)
-                AnimationEngine.glow_label(self.custom_result, Theme.WARNING)
-                return
-            choice = random.choice(opts)
-            self._animate_result(f"🎯 {choice}")
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _pick_n(self):
-        try:
-            opts = [o.strip() for o in self._get_options_text().split('\n') if o.strip()]
-            if len(opts) < 2:
-                self.custom_result.config(text="⚠️ 至少需要2个选项", fg=Theme.WARNING)
-                AnimationEngine.glow_label(self.custom_result, Theme.WARNING)
-                return
-            n = simpledialog.askinteger("随机多选",
-                                         f"共 {len(opts)} 项，选几个？",
-                                         minvalue=1, maxvalue=len(opts))
-            if n is None:
-                return
-            picked = random.sample(opts, n)
-            self._animate_result("🎯 选中:\n" + "  ".join(picked))
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _animate_result(self, text):
-        self.custom_result.config(text="✨ ...", fg=Theme.PRIMARY)
-        self.update()
-        def _show():
-            self.custom_result.config(text=text, fg=Theme.ACCENT)
-            AnimationEngine.glow_label(self.custom_result, Theme.ACCENT)
-        self.after(250, _show)
-
-    def _save_lots(self):
-        try:
-            data = DataManager.load('decider.json', {})
-            data['options'] = self._get_options_text()
-            data['lots'] = self._get_lots_text()
-            data['coin_stats'] = self.coin_count
-            DataManager.save('decider.json', data)
-            self.lot_result.config(text="✅ 签文已保存", fg=Theme.SUCCESS)
-            AnimationEngine.glow_label(self.lot_result, Theme.SUCCESS)
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _draw_lot_anim(self):
-        try:
-            lots = [l.strip() for l in self._get_lots_text().split('\n') if l.strip()]
-            if not lots:
-                self.lot_result.config(text="⚠️ 请先输入签文", fg=Theme.WARNING)
-                AnimationEngine.glow_label(self.lot_result, Theme.WARNING)
-                return
-            self.lot_result.config(text="摇签中... 🍀", fg=Theme.PRIMARY)
-            self.update()
-            frames = ["🍀", "🎋", "✨", "🌟", "🍀", "🎋"]
-            idx = [0]
-            def _shake():
-                idx[0] += 1
-                if idx[0] >= len(frames):
-                    result = random.choice(lots)
-                    self.lot_result.config(text=f"🎋 {result}", fg='#880E4F')
-                    AnimationEngine.glow_label(self.lot_result, '#E91E63')
-                    self._show_lot_popup(result)
-                    return
-                self.lot_result.config(text=frames[idx[0] - 1], fg='#F57C00')
-                self.after(100, _shake)
-            self.after(300, _shake)
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _show_lot_popup(self, result):
-        try:
-            popup = tk.Toplevel(self)
-            popup.title("抽签结果")
-            popup.geometry("280x170")
-            popup.configure(bg='#FCE4EC')
-            popup.transient(self.winfo_toplevel())
-            popup.grab_set()
-            tk.Label(popup, text="🎋", font=('Segoe UI Emoji', 48),
-                     bg='#FCE4EC').pack(pady=(15, 0))
-            tk.Label(popup, text=result, font=('Microsoft YaHei', 16, 'bold'),
-                     bg='#FCE4EC', fg='#880E4F', wraplength=280).pack(pady=10, padx=20)
-            RoundedButton(popup, text="好的", command=popup.destroy,
-                           bg='#E91E63', width=84, height=26).pack(pady=8)
-            popup.update_idletasks()
-            AnimationEngine.animate_popup(popup, duration=300)
-        except Exception:
-            pass
-
-    def _flip_coin_anim(self):
-        try:
-            self.coin_label.config(text="翻转中...", fg=Theme.PRIMARY)
-            self.update()
-            frames = ['flip1', 'flip2', 'flip1', 'flip2', 'flip1']
-            idx = [0]
-
-            def _flip():
-                idx[0] += 1
-                if idx[0] >= len(frames):
-                    result = random.choice(['heads', 'tails'])
-                    if result == 'heads':
-                        self.coin_count['heads'] += 1
-                        self._draw_coin_canvas('heads')
-                        self.coin_label.config(text="🌟 正 面 🌟", fg='#FF6F00')
-                    else:
-                        self.coin_count['tails'] += 1
-                        self._draw_coin_canvas('tails')
-                        self.coin_label.config(text="🌙 反 面 🌙", fg='#1565C0')
-                    self._update_stats()
-                    data = DataManager.load('decider.json', {})
-                    data['coin_stats'] = self.coin_count
-                    DataManager.save('decider.json', data)
-                    c = '#FF6F00' if result == 'heads' else '#1565C0'
-                    AnimationEngine.glow_label(self.coin_label, c)
-                    return
-                self._draw_coin_canvas(frames[idx[0] - 1])
-                self.after(80, _flip)
-            self.after(200, _flip)
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _update_stats(self):
-        h = self.coin_count.get('heads', 0)
-        t = self.coin_count.get('tails', 0)
-        self.coin_stats.config(text=f"正面: {h} 次  |  反面: {t} 次")
-
-class AccountingPage(tk.Frame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, bg=Theme.BG, **kwargs)
-        self._build_ui()
-
-    def _build_ui(self):
-        tk.Label(self, text="💰 简易记账", font=Theme.FONT_HEADER,
-                 bg=Theme.BG, fg=Theme.TEXT).pack(pady=(10, 5))
-        tk.Label(self, text="收支记录 / 极简流水", font=Theme.FONT_SMALL,
-                 bg=Theme.BG, fg=Theme.TEXT_SECONDARY).pack()
-
-        nb = ttk.Notebook(self)
-        nb.pack(fill='both', expand=True, padx=15, pady=5)
-
-        t1 = tk.Frame(nb, bg=Theme.CARD)
-        nb.add(t1, text='  记一笔  ')
-        self._build_add_entry(t1)
-
-        t2 = tk.Frame(nb, bg=Theme.CARD)
-        nb.add(t2, text='  流水表  ')
-        self._build_transaction_list(t2)
-
-        self._refresh_summary()
-
-    def _build_add_entry(self, parent):
-        form = tk.Frame(parent, bg=Theme.CARD)
-        form.pack(fill='x', padx=15, pady=15)
-
-        row1 = tk.Frame(form, bg=Theme.CARD)
-        row1.pack(fill='x', pady=5)
-        tk.Label(row1, text="类型:", font=Theme.FONT_BODY, bg=Theme.CARD,
-                 fg=Theme.TEXT_SECONDARY, width=8).pack(side='left')
-        self.type_var = tk.StringVar(value='expense')
-        type_frame = tk.Frame(row1, bg=Theme.CARD)
-        type_frame.pack(side='left', fill='x', expand=True)
-        tk.Radiobutton(type_frame, text="支出", variable=self.type_var, value='expense',
-                        font=Theme.FONT_BODY, bg=Theme.CARD, fg=Theme.DANGER,
-                        selectcolor=Theme.CARD, activebackground=Theme.CARD).pack(side='left', padx=5)
-        tk.Radiobutton(type_frame, text="收入", variable=self.type_var, value='income',
-                        font=Theme.FONT_BODY, bg=Theme.CARD, fg=Theme.SUCCESS,
-                        selectcolor=Theme.CARD, activebackground=Theme.CARD).pack(side='left', padx=5)
-
-        row2 = tk.Frame(form, bg=Theme.CARD)
-        row2.pack(fill='x', pady=5)
-        tk.Label(row2, text="分类:", font=Theme.FONT_BODY, bg=Theme.CARD,
-                 fg=Theme.TEXT_SECONDARY, width=8).pack(side='left')
-        self.category_var = tk.StringVar(value='餐饮')
-        categories = ['餐饮', '交通', '购物', '娱乐', '医疗', '工资', '奖金', '其他']
-        ttk.Combobox(row2, textvariable=self.category_var, values=categories,
-                      font=Theme.FONT_BODY, state='readonly',
-                      width=15).pack(side='left', fill='x', expand=True)
-
-        row3 = tk.Frame(form, bg=Theme.CARD)
-        row3.pack(fill='x', pady=5)
-        tk.Label(row3, text="金额:", font=Theme.FONT_BODY, bg=Theme.CARD,
-                 fg=Theme.TEXT_SECONDARY, width=8).pack(side='left')
-        self.amount_var = tk.StringVar()
-        tk.Entry(row3, textvariable=self.amount_var, font=Theme.FONT_BODY,
-                  width=15, bd=0, highlightthickness=1,
-                  highlightbackground=Theme.BORDER,
-                  highlightcolor=Theme.PRIMARY).pack(side='left', fill='x', expand=True)
-
-        row4 = tk.Frame(form, bg=Theme.CARD)
-        row4.pack(fill='x', pady=5)
-        tk.Label(row4, text="日期:", font=Theme.FONT_BODY, bg=Theme.CARD,
-                 fg=Theme.TEXT_SECONDARY, width=8).pack(side='left')
-        today = datetime.date.today().strftime('%Y-%m-%d')
-        self.date_var = tk.StringVar(value=today)
-        tk.Entry(row4, textvariable=self.date_var, font=Theme.FONT_BODY,
-                  width=15, bd=0, highlightthickness=1,
-                  highlightbackground=Theme.BORDER,
-                  highlightcolor=Theme.PRIMARY).pack(side='left', fill='x', expand=True)
-
-        row5 = tk.Frame(form, bg=Theme.CARD)
-        row5.pack(fill='x', pady=5)
-        tk.Label(row5, text="备注:", font=Theme.FONT_BODY, bg=Theme.CARD,
-                 fg=Theme.TEXT_SECONDARY, width=8).pack(side='left')
-        self.note_var = tk.StringVar()
-        tk.Entry(row5, textvariable=self.note_var, font=Theme.FONT_BODY,
-                  width=15, bd=0, highlightthickness=1,
-                  highlightbackground=Theme.BORDER,
-                  highlightcolor=Theme.PRIMARY).pack(side='left', fill='x', expand=True)
-
-        btn_frame = tk.Frame(form, bg=Theme.CARD)
-        btn_frame.pack(pady=10)
-        RoundedButton(btn_frame, text="💾 保存记录", command=self._add_entry,
-                       bg=Theme.PRIMARY, width=92, height=22).pack(side='left', padx=5)
-        RoundedButton(btn_frame, text="清空", command=self._clear_form,
-                       bg=Theme.TEXT_MUTED, width=70, height=22).pack(side='left', padx=5)
-
-        self.add_status = tk.Label(form, text="", font=Theme.FONT_SMALL,
-                                    bg=Theme.CARD, fg=Theme.SUCCESS)
-        self.add_status.pack(pady=3)
-
-    def _build_transaction_list(self, parent):
-        style = ttk.Style()
-        style.configure('Acc.Treeview', background=Theme.CARD, foreground=Theme.TEXT,
-                        fieldbackground=Theme.CARD, font=Theme.FONT_BODY, rowheight=26)
-        style.configure('Acc.Treeview.Heading', font=Theme.FONT_BODY_BOLD,
-                        background=Theme.PRIMARY, foreground='white')
-
-        lf = tk.Frame(parent, bg=Theme.CARD)
-        lf.pack(fill='both', expand=True, padx=15, pady=10)
-
-        cols = ('date', 'type', 'category', 'amount', 'note')
-        self.tree = ttk.Treeview(lf, columns=cols, show='headings',
-                                  height=12, style='Acc.Treeview')
-        for col, txt, w in [('date', '日期', 100), ('type', '类型', 60),
-                             ('category', '分类', 80), ('amount', '金额', 80),
-                             ('note', '备注', 160)]:
-            self.tree.heading(col, text=txt)
-            anchor = 'center' if col != 'note' else 'w'
-            self.tree.column(col, width=w, anchor=anchor)
-
-        vsb = ttk.Scrollbar(lf, orient='vertical', command=self.tree.yview)
-        self.tree.configure(yscrollcommand=vsb.set)
-        self.tree.pack(side='left', fill='both', expand=True)
-        vsb.pack(side='right', fill='y')
-
-        bf = tk.Frame(parent, bg=Theme.CARD)
-        bf.pack(fill='x', padx=15, pady=5)
-        RoundedButton(bf, text="🗑️ 删除选中", command=self._delete_selected,
-                       bg=Theme.DANGER, width=92, height=24).pack(side='left', padx=5)
-        RoundedButton(bf, text="🔄 刷新", command=self._refresh_list,
-                       bg=Theme.PRIMARY, width=70, height=24).pack(side='left', padx=5)
-
-        self.summary_frame = tk.Frame(parent, bg=Theme.CARD)
-        self.summary_frame.pack(fill='x', padx=15, pady=10)
-
-    def _add_entry(self):
-        try:
-            amount_str = self.amount_var.get().strip()
-            if not amount_str:
-                messagebox.showwarning("提示", "请输入金额！")
-                return
-            amount = float(amount_str)
-            if amount <= 0:
-                messagebox.showwarning("提示", "金额必须大于0！")
-                return
-            date_str = self.date_var.get().strip()
-            datetime.datetime.strptime(date_str, '%Y-%m-%d')
-        except ValueError:
-            messagebox.showwarning("提示", "请输入有效的金额和日期！")
+    def _tick(self):
+        if not self.running:
             return
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
+        self._draw()
+        if self.remain <= 0:
+            self.running = False
+            self.btn_start.set_text("▶ 开始")
+            try:
+                messagebox.showinfo("番茄钟", "⏰ 时间到！")
+                self.bell()
+            except Exception:
+                pass
             return
+        self.remain -= 1
+        self._job = self.after(1000, self._tick)
 
+# =========================================================
+#  12. 倒计时
+# =========================================================
+class CountdownPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "倒计时")
+        self.total = 0
+        self.remain = 0
+        self.running = False
+        self._job = None
+        self._end_ts = None
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        card = RoundedContainer(wrap, radius=16, padx=24, pady=24)
+        card.pack(fill="both", expand=True)
+        # 输入 H M S
+        inp = tk.Frame(card.inner, bg=THEME["CARD"])
+        inp.pack(pady=(0, 16))
+        self.h_var = tk.StringVar(value="0")
+        self.m_var = tk.StringVar(value="5")
+        self.s_var = tk.StringVar(value="0")
+        for title, var in [("时", self.h_var), ("分", self.m_var), ("秒", self.s_var)]:
+            cell = tk.Frame(inp, bg=THEME["CARD"])
+            cell.pack(side="left", padx=8)
+            tk.Label(cell, text=title, fg=THEME["MUTED"], bg=THEME["CARD"],
+                     font=("Microsoft YaHei", 10)).pack()
+            rc = RoundedContainer(cell, bg=THEME["BG"], radius=10, padx=8, pady=2)
+            rc.pack(pady=4)
+            sp = tk.Spinbox(rc.inner, from_=0, to=99, textvariable=var, width=5,
+                            bg=THEME["BG"], fg=THEME["TEXT"], bd=0,
+                            font=("Consolas", 18, "bold"), justify="center",
+                            buttonbackground=THEME["HOVER"])
+            sp.pack()
+        # 显示
+        self.canvas = tk.Canvas(card.inner, width=340, height=200, bg=THEME["CARD"], highlightthickness=0)
+        self.canvas.pack(pady=4)
+        self.canvas.bind("<Configure>", lambda e: self._draw())
+        # 状态
+        self.status = tk.Label(card.inner, text="⏱ 未开始", bg=THEME["CARD"], fg=THEME["MUTED"],
+                               font=("Microsoft YaHei", 11, "bold"))
+        self.status.pack(pady=4)
+        # 按钮
+        ctrl = tk.Frame(card.inner, bg=THEME["CARD"])
+        ctrl.pack(pady=14)
+        self.btn_start = RoundedButton(ctrl, "▶ 开始", command=self._start, width=110, height=40, radius=10)
+        self.btn_start.pack(side="left", padx=6)
+        RoundedButton(ctrl, "⏸ 暂停", command=self._pause, width=110, height=40, radius=10,
+                      bg=THEME["WARNING"]).pack(side="left", padx=6)
+        RoundedButton(ctrl, "↺ 重置", command=self._reset, width=110, height=40, radius=10,
+                      bg=THEME["CARD"], fg=THEME["TEXT"]).pack(side="left", padx=6)
+        self.after(30, self._draw)
+
+    def _parse(self):
         try:
-            data = DataManager.load('accounting.json', {})
-            entries = data.get('entries', [])
-            entry = {
-                'type': self.type_var.get(),
-                'category': self.category_var.get(),
-                'amount': amount,
-                'date': date_str,
-                'note': self.note_var.get().strip()
-            }
-            entries.append(entry)
-            data['entries'] = entries
-            DataManager.save('accounting.json', data)
-            self.add_status.config(text="✅ 已保存", fg=Theme.SUCCESS)
-            AnimationEngine.glow_label(self.add_status, Theme.SUCCESS)
-            self._clear_form()
-            self._refresh_list()
-            self._refresh_summary()
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
+            h = int(float(self.h_var.get() or 0))
+            m = int(float(self.m_var.get() or 0))
+            s = int(float(self.s_var.get() or 0))
+            return max(0, h*3600 + m*60 + s)
+        except Exception:
+            return 0
 
-    def _clear_form(self):
-        self.amount_var.set('')
-        self.note_var.set('')
-        self.type_var.set('expense')
-        self.category_var.set('餐饮')
-        self.date_var.set(datetime.date.today().strftime('%Y-%m-%d'))
+    def _draw(self):
+        c = self.canvas
+        c.delete("all")
+        cw = c.winfo_width() or 340
+        ch = c.winfo_height() or 200
+        cx, cy = cw//2, ch//2
+        h, rem = divmod(max(0, self.remain), 3600)
+        m, s = divmod(rem, 60)
+        txt = f"{h:02d}:{m:02d}:{s:02d}"
+        # 画背景圆角
+        c.create_rectangle(0, 0, cw, ch, fill=THEME["BG"], outline="")
+        c.create_text(cx, cy, text=txt, fill=THEME["PRIMARY"],
+                      font=("Consolas", 54, "bold"))
 
-    def _load_entries(self):
-        data = DataManager.load('accounting.json', {})
-        return data.get('entries', [])
+    def _start(self):
+        if self.remain <= 0:
+            self.remain = self._parse()
+            self.total = self.remain
+        if self.remain <= 0:
+            messagebox.showwarning("提示", "请先设置时间")
+            return
+        self.running = True
+        self._end_ts = time.time() + self.remain
+        self.status.configure(text="⏳ 倒计时中...")
+        self.btn_start.set_text("⏵ 运行中")
+        self._tick()
 
-    def _refresh_list(self):
-        for i in self.tree.get_children():
-            self.tree.delete(i)
-        entries = self._load_entries()
-        for e in reversed(entries):
-            type_text = '收入' if e.get('type') == 'income' else '支出'
-            amount = e.get('amount', 0)
-            if e.get('type') == 'income':
-                amount_text = f'+{amount:.2f}'
+    def _pause(self):
+        self.running = False
+        if self._job:
+            self.after_cancel(self._job); self._job = None
+        self.status.configure(text="⏸ 已暂停")
+        self.btn_start.set_text("▶ 继续")
+
+    def _reset(self):
+        self.running = False
+        if self._job:
+            self.after_cancel(self._job); self._job = None
+        self.remain = 0
+        self._end_ts = None
+        self.status.configure(text="⏱ 未开始")
+        self.btn_start.set_text("▶ 开始")
+        self._draw()
+
+    def _tick(self):
+        if not self.running:
+            return
+        if self._end_ts:
+            self.remain = max(0, int(self._end_ts - time.time()))
+        self._draw()
+        if self.remain <= 0:
+            self.running = False
+            self.status.configure(text="⏰ 时间到！")
+            self.btn_start.set_text("▶ 开始")
+            try:
+                messagebox.showinfo("倒计时", "⏰ 倒计时结束！")
+                for _ in range(3): self.bell()
+            except Exception:
+                pass
+            return
+        self._job = self.after(1000, self._tick)
+
+# =========================================================
+#  13. 纪念日管理
+# =========================================================
+class AnniversaryPage(BasePage):
+    def __init__(self, master, app):
+        self.items = load_json("anniversaries.json", [])
+        super().__init__(master, app, "纪念日管理")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 添加表单
+        add_card = RoundedContainer(wrap, radius=14, padx=16, pady=14)
+        add_card.pack(fill="x", pady=(0, 10))
+        form = tk.Frame(add_card.inner, bg=THEME["CARD"])
+        form.pack(fill="x")
+        tk.Label(form, text="名称:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, sticky="w")
+        self.name_v = tk.StringVar()
+        rc1 = RoundedContainer(form, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc1.grid(row=0, column=1, sticky="we", padx=6, pady=4)
+        tk.Entry(rc1.inner, textvariable=self.name_v, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, font=("Microsoft YaHei", 10), insertbackground=THEME["TEXT"]).pack(fill="x")
+        tk.Label(form, text="日期:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=2, sticky="w", padx=(8,0))
+        today = datetime.date.today()
+        self.date_v = tk.StringVar(value=today.strftime("%Y-%m-%d"))
+        rc2 = RoundedContainer(form, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc2.grid(row=0, column=3, sticky="we", padx=6, pady=4)
+        tk.Entry(rc2.inner, textvariable=self.date_v, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, font=("Consolas", 10), insertbackground=THEME["TEXT"]).pack(fill="x")
+        RoundedButton(form, "➕ 添加", command=self._add, width=90, height=32,
+                      radius=8).grid(row=0, column=4, padx=6)
+        form.grid_columnconfigure(1, weight=1)
+        form.grid_columnconfigure(3, weight=1)
+        # 列表
+        list_card = RoundedContainer(wrap, radius=14, padx=6, pady=6)
+        list_card.pack(fill="both", expand=True)
+        # 表头
+        head = tk.Frame(list_card.inner, bg=THEME["CARD"])
+        head.pack(fill="x", padx=8, pady=(6,2))
+        for t, w in [("名称", 20), ("日期", 12), ("天数", 8), ("说明", 22), ("操作", 10)]:
+            tk.Label(head, text=t, fg=THEME["MUTED"], bg=THEME["CARD"],
+                     font=("Microsoft YaHei", 9, "bold"), anchor="w",
+                     width=w).pack(side="left", padx=4)
+        # 可滚动列表
+        scroll = tk.Frame(list_card.inner, bg=THEME["CARD"])
+        scroll.pack(fill="both", expand=True, padx=8, pady=4)
+        self.canvas_list = tk.Canvas(scroll, bg=THEME["CARD"], highlightthickness=0)
+        self.canvas_list.pack(side="left", fill="both", expand=True)
+        sb = tk.Scrollbar(scroll, orient="vertical", command=self.canvas_list.yview,
+                          bg=THEME["CARD"], troughcolor=THEME["HOVER"],
+                          activebackground=THEME["PRIMARY"])
+        sb.pack(side="right", fill="y")
+        self.canvas_list.configure(yscrollcommand=sb.set)
+        self.list_frame = tk.Frame(self.canvas_list, bg=THEME["CARD"])
+        self.canvas_list.create_window((0,0), window=self.list_frame, anchor="nw")
+        self.list_frame.bind("<Configure>",
+            lambda e: self.canvas_list.configure(scrollregion=self.canvas_list.bbox("all")))
+        self._render_list()
+
+    def _render_list(self):
+        for c in self.list_frame.winfo_children():
+            c.destroy()
+        today = datetime.date.today()
+        if not self.items:
+            tk.Label(self.list_frame, text="暂无纪念日，快去添加一个吧~",
+                     fg=THEME["MUTED"], bg=THEME["CARD"],
+                     font=("Microsoft YaHei", 11), pady=30).pack()
+        for idx, item in enumerate(self.items):
+            try:
+                d = datetime.datetime.strptime(item["date"], "%Y-%m-%d").date()
+            except Exception:
+                continue
+            delta = (d - today).days
+            if delta > 0:
+                info = f"还有 {delta} 天"; tone = THEME["PRIMARY"]
+            elif delta == 0:
+                info = "就是今天！"; tone = THEME["SUCCESS"]
             else:
-                amount_text = f'-{amount:.2f}'
-            self.tree.insert('', 'end', values=(
-                e.get('date', ''), type_text, e.get('category', ''),
-                amount_text, e.get('note', '')))
+                info = f"已过去 {-delta} 天"; tone = THEME["WARNING"]
+            bg = THEME["BG"] if idx % 2 == 0 else THEME["CARD"]
+            row = tk.Frame(self.list_frame, bg=bg)
+            row.pack(fill="x", pady=2)
+            tk.Label(row, text=item["name"], fg=THEME["TEXT"], bg=bg,
+                     font=("Microsoft YaHei", 10), anchor="w", width=22).pack(side="left", padx=4, ipady=6)
+            tk.Label(row, text=item["date"], fg=THEME["MUTED"], bg=bg,
+                     font=("Consolas", 10), anchor="w", width=14).pack(side="left", padx=4)
+            tk.Label(row, text=str(abs(delta)), fg=tone, bg=bg,
+                     font=("Consolas", 12, "bold"), anchor="w", width=8).pack(side="left", padx=4)
+            tk.Label(row, text=info, fg=tone, bg=bg,
+                     font=("Microsoft YaHei", 10), anchor="w", width=24).pack(side="left", padx=4)
+            del_btn = RoundedButton(row, "删除", command=lambda i=idx: self._delete(i),
+                                    width=66, height=26, radius=6, bg=THEME["ERROR"])
+            del_btn.pack(side="left", padx=4)
 
-    def _delete_selected(self):
-        sel = self.tree.selection()
-        if not sel:
-            messagebox.showwarning("提示", "请先选择要删除的记录！")
+    def _add(self):
+        name = self.name_v.get().strip()
+        ds = self.date_v.get().strip()
+        if not name:
+            messagebox.showwarning("提示", "请输入名称"); return
+        try:
+            datetime.datetime.strptime(ds, "%Y-%m-%d")
+        except Exception:
+            messagebox.showwarning("提示", "日期格式应为 YYYY-MM-DD"); return
+        self.items.append({"name": name, "date": ds})
+        self.items.sort(key=lambda x: x["date"])
+        save_json("anniversaries.json", self.items)
+        self.name_v.set("")
+        self._render_list()
+
+    def _delete(self, idx):
+        if not messagebox.askyesno("确认", "确定删除该纪念日？"):
             return
-        if not messagebox.askyesno("确认", f"确定要删除 {len(sel)} 条记录吗？"):
+        del self.items[idx]
+        save_json("anniversaries.json", self.items)
+        self._render_list()
+
+# =========================================================
+#  14. 桌面便签
+# =========================================================
+class StickyNotePage(BasePage):
+    def __init__(self, master, app):
+        self.notes = load_json("notes.json", [])
+        self.windows = {}
+        super().__init__(master, app, "桌面便签")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        bar = tk.Frame(wrap, bg=THEME["BG"])
+        bar.pack(fill="x", pady=(0, 10))
+        RoundedButton(bar, "📝 新建便签", command=self._new, width=150, height=38, radius=10).pack(side="left")
+        tk.Label(bar, text=f"共 {len(self.notes)} 个便签", fg=THEME["MUTED"], bg=THEME["BG"],
+                 font=("Microsoft YaHei", 10)).pack(side="left", padx=16)
+        RoundedButton(bar, "🗑 清空所有", command=self._clear_all, bg=THEME["ERROR"],
+                      width=120, height=38, radius=10).pack(side="right")
+        # 列表
+        card = RoundedContainer(wrap, radius=14, padx=10, pady=10)
+        card.pack(fill="both", expand=True)
+        self.list_fr = tk.Frame(card.inner, bg=THEME["CARD"])
+        self.list_fr.pack(fill="both", expand=True)
+        self._render_list()
+
+    def _render_list(self):
+        for c in self.list_fr.winfo_children():
+            c.destroy()
+        if not self.notes:
+            tk.Label(self.list_fr, text="还没有便签。点击上方「新建便签」开始记录吧！",
+                     fg=THEME["MUTED"], bg=THEME["CARD"], font=("Microsoft YaHei", 11), pady=40).pack()
             return
-        try:
-            data = DataManager.load('accounting.json', {})
-            entries = data.get('entries', [])
-            for s in sel:
-                vals = self.tree.item(s, 'values')
-                date_sel, type_sel, cat_sel, amt_sel = vals[0], vals[1], vals[2], vals[3]
-                for i, e in enumerate(entries):
-                    if (e.get('date') == date_sel and
-                        ('收入' if e.get('type') == 'income' else '支出') == type_sel and
-                        e.get('category') == cat_sel and
-                        f"{float(amt_sel.replace('+', '').replace('-', '')):.2f}" == f"{e.get('amount'):.2f}"):
-                        del entries[i]
-                        break
-            data['entries'] = entries
-            DataManager.save('accounting.json', data)
-            self._refresh_list()
-            self._refresh_summary()
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _refresh_summary(self):
-        try:
-            for w in self.summary_frame.winfo_children():
-                w.destroy()
-            entries = self._load_entries()
-            total_income = sum(e.get('amount', 0) for e in entries if e.get('type') == 'income')
-            total_expense = sum(e.get('amount', 0) for e in entries if e.get('type') == 'expense')
-            balance = total_income - total_expense
-
-            tk.Label(self.summary_frame, text="📊 统计", font=Theme.FONT_BODY_BOLD,
-                     bg=Theme.CARD, fg=Theme.TEXT).pack(anchor='w', padx=10, pady=(8, 3))
-
-            stats_row = tk.Frame(self.summary_frame, bg=Theme.CARD)
-            stats_row.pack(fill='x', padx=10, pady=3)
-
-            tk.Label(stats_row, text=f"总收入: ¥{total_income:.2f}",
-                     font=Theme.FONT_BODY, bg=Theme.CARD,
-                     fg=Theme.SUCCESS).pack(side='left', padx=10)
-            tk.Label(stats_row, text=f"总支出: ¥{total_expense:.2f}",
-                     font=Theme.FONT_BODY, bg=Theme.CARD,
-                     fg=Theme.DANGER).pack(side='left', padx=10)
-            bal_color = Theme.SUCCESS if balance >= 0 else Theme.DANGER
-            tk.Label(stats_row, text=f"结余: ¥{balance:.2f}",
-                     font=Theme.FONT_BODY_BOLD, bg=Theme.CARD,
-                     fg=bal_color).pack(side='left', padx=10)
-
-            tk.Label(self.summary_frame, text=f"共 {len(entries)} 条记录",
-                     font=Theme.FONT_SMALL, bg=Theme.CARD,
-                     fg=Theme.TEXT_MUTED).pack(anchor='w', padx=10, pady=(3, 8))
-        except Exception:
-            pass
-
-
-
-class StickyNoteWindow(tk.Toplevel):
-    def __init__(self, master, note_id=0, text="", color='#FFF9C4', name=""):
-        super().__init__(master)
-        self.note_id = note_id
-        self.save_job = None
-        self._drag_x = 0
-        self._drag_y = 0
-        self._name = name or f"便签 #{note_id + 1}"
-        self._main_app = master.winfo_toplevel()
-        self.overrideredirect(True)
-        self.attributes('-topmost', True)
-        self.configure(bg=color, highlightbackground='#BDBDBD', highlightthickness=1)
-
-        title_bar = tk.Frame(self, bg=color, height=24)
-        title_bar.pack(fill='x', side='top')
-        title_bar.pack_propagate(False)
-
-        self.name_label = tk.Label(title_bar, text=self._name, bg=color,
-                                    font=('Microsoft YaHei', 9, 'bold'),
-                                    anchor='w', cursor='hand2')
-        self.name_label.pack(side='left', padx=5)
-        self.name_label.bind('<Double-Button-1>', lambda e: self._rename())
-
-        close_btn = tk.Label(title_bar, text="✕", bg=color, fg='#D32F2F',
-                               font=('Segoe UI', 10, 'bold'), cursor='hand2')
-        close_btn.pack(side='right', padx=3)
-        close_btn.bind('<Button-1>', lambda e: self._close())
-        close_btn.bind('<Enter>', lambda e: close_btn.config(fg='#B71C1C'))
-        close_btn.bind('<Leave>', lambda e: close_btn.config(fg='#D32F2F'))
-
-        color_btn = tk.Label(title_bar, text="🎨", bg=color,
-                               font=('Segoe UI', 10), cursor='hand2')
-        color_btn.pack(side='right', padx=3)
-        color_btn.bind('<Button-1>', lambda e: self._change_color())
-
-        title_bar.bind('<Button-1>', self._start_drag)
-        title_bar.bind('<B1-Motion>', self._on_drag)
-        self.name_label.bind('<Button-1>', self._start_drag)
-        self.name_label.bind('<B1-Motion>', self._on_drag)
-
-        self.text_widget = tk.Text(self, bg=color, fg=Theme.TEXT,
-                                    font=Theme.FONT_BODY, wrap='word', bd=0,
-                                    highlightthickness=0, padx=8, pady=5, height=6)
-        self.text_widget.pack(fill='both', expand=True)
-        self.text_widget.insert('1.0', text)
-        self.text_widget.bind('<KeyRelease>', self._on_change)
-
-        self.menu = tk.Menu(self, tearoff=0)
-        self.menu.add_command(label="修改名称", command=self._rename)
-        self.menu.add_command(label="置顶/取消置顶", command=self._toggle_top)
-        self.menu.add_command(label="新建便签", command=self._new_note)
-        self.menu.add_command(label="关闭", command=self._close)
-        self.text_widget.bind('<Button-3>', self._show_menu)
-
-        try:
-            data = DataManager.load('notes.json', {})
-            notes = data.get('notes', [])
-            if note_id < len(notes):
-                self.geometry(notes[note_id].get('geometry', '160x130+100+100'))
-            else:
-                self.geometry('160x130+100+100')
-        except Exception:
-            self.geometry('160x130+100+100')
-        try:
-            self.update_idletasks()
-            AnimationEngine.animate_popup(self, duration=250)
-        except Exception:
-            pass
-
-    def _rename(self):
-        try:
-            new_name = simpledialog.askstring("修改便签名称",
-                                               "请输入便签名称：",
-                                               initialvalue=self._name,
-                                               parent=self._main_app)
-            if new_name and new_name.strip():
-                self._name = new_name.strip()
-                self.name_label.config(text=self._name)
-                self._save()
-        except Exception:
-            pass
-
-    def _start_drag(self, e):
-        self._drag_x, self._drag_y = e.x_root - self.winfo_x(), e.y_root - self.winfo_y()
-
-    def _on_drag(self, e):
-        self.geometry(f'+{e.x_root - self._drag_x}+{e.y_root - self._drag_y}')
-
-    def _on_change(self, e=None):
-        if self.save_job:
-            self.after_cancel(self.save_job)
-        self.save_job = self.after(500, self._save)
+        for i in range(0, len(self.notes), 3):
+            row = tk.Frame(self.list_fr, bg=THEME["CARD"])
+            row.pack(fill="x", pady=4)
+            for j in range(3):
+                if i + j >= len(self.notes):
+                    break
+                idx = i + j
+                n = self.notes[idx]
+                color = n.get("color", "#FEF3C7")
+                preview = (n.get("content", "") or "(空便签)")[:40]
+                cell = RoundedContainer(row, bg=color, radius=12, padx=12, pady=12)
+                cell.pack(side="left", fill="both", expand=True, padx=6)
+                cell.inner.configure(bg=color)
+                tk.Label(cell.inner, text=preview, bg=color, fg="#1F2937",
+                         font=("Microsoft YaHei", 10), wraplength=200,
+                         anchor="nw", justify="left", height=4).pack(fill="x")
+                btns = tk.Frame(cell.inner, bg=color)
+                btns.pack(fill="x", pady=(6,0))
+                tk.Button(btns, text="打开", relief="flat", bg="#F59E0B", fg="white",
+                          cursor="hand2", font=("Microsoft YaHei", 9, "bold"),
+                          command=lambda ii=idx: self._open(ii)).pack(side="left", padx=2)
+                tk.Button(btns, text="删除", relief="flat", bg="#EF4444", fg="white",
+                          cursor="hand2", font=("Microsoft YaHei", 9, "bold"),
+                          command=lambda ii=idx: self._delete(ii)).pack(side="right", padx=2)
 
     def _save(self):
-        self.save_job = None
+        save_json("notes.json", self.notes)
+
+    def _new(self):
+        colors = ["#FEF3C7", "#DBEAFE", "#FCE7F3", "#D1FAE5", "#E0E7FF", "#FED7AA"]
+        color = random.choice(colors)
+        note = {"id": str(uuid.uuid4()), "content": "", "color": color,
+                "x": 300 + random.randint(-60, 60), "y": 200 + random.randint(-40, 40)}
+        self.notes.append(note)
+        self._save()
+        self._open(len(self.notes) - 1)
+        self._render_list()
+
+    def _open(self, idx):
+        if idx < 0 or idx >= len(self.notes):
+            return
+        note = self.notes[idx]
+        nid = note["id"]
+        if nid in self.windows and self.windows[nid].winfo_exists():
+            self.windows[nid].lift(); return
+        self.windows[nid] = self._make_window(idx, note)
+
+    def _make_window(self, idx, note):
+        win = tk.Toplevel(self)
+        win.title("便签")
+        win.geometry(f"280x300+{note.get('x',300)}+{note.get('y',200)}")
+        win.configure(bg=note["color"])
+        win.attributes("-topmost", True)
+        # 标题条
+        bar = tk.Frame(win, bg=note["color"], cursor="fleur")
+        bar.pack(fill="x")
+        tk.Label(bar, text="📝 便签", bg=note["color"], fg="#1F2937",
+                 font=("Microsoft YaHei", 10, "bold")).pack(side="left", padx=8, pady=4)
+        tk.Button(bar, text="×", relief="flat", bg=note["color"], fg="#1F2937",
+                  cursor="hand2", bd=0, font=("Arial", 14, "bold"),
+                  command=win.destroy).pack(side="right", padx=6)
+        # 文本
+        txt = tk.Text(win, bg=note["color"], fg="#1F2937", bd=0, relief="flat",
+                      font=("Microsoft YaHei", 11), insertbackground="#1F2937")
+        txt.pack(fill="both", expand=True, padx=8, pady=4)
+        txt.insert("1.0", note.get("content", ""))
+        # 保存
+        def on_save(*a):
+            try:
+                self.notes[idx]["content"] = txt.get("1.0", "end").rstrip("\n")
+                self._save()
+            except Exception:
+                pass
+        txt.bind("<KeyRelease>", on_save)
+        # 拖动
+        data = {"x": 0, "y": 0}
+        def on_press(e):
+            data["x"] = e.x; data["y"] = e.y
+        def on_drag(e):
+            x = win.winfo_x() + (e.x - data["x"])
+            y = win.winfo_y() + (e.y - data["y"])
+            win.geometry(f"+{x}+{y}")
+            try:
+                self.notes[idx]["x"] = x
+                self.notes[idx]["y"] = y
+            except Exception:
+                pass
+        bar.bind("<Button-1>", on_press)
+        bar.bind("<B1-Motion>", on_drag)
+        win.protocol("WM_DELETE_WINDOW", lambda: (on_save(), self._render_list(), win.destroy()))
+        return win
+
+    def _delete(self, idx):
+        if not messagebox.askyesno("确认", "删除这个便签？"): return
+        nid = self.notes[idx].get("id")
+        if nid and nid in self.windows:
+            try: self.windows[nid].destroy()
+            except Exception: pass
+            del self.windows[nid]
+        del self.notes[idx]
+        self._save()
+        self._render_list()
+
+    def _clear_all(self):
+        if not messagebox.askyesno("确认", "清空所有便签？此操作不可恢复！"): return
+        for w in list(self.windows.values()):
+            try: w.destroy()
+            except Exception: pass
+        self.windows.clear()
+        self.notes.clear()
+        self._save()
+        self._render_list()
+
+# =========================================================
+#  15. 简易记账
+# =========================================================
+class LedgerPage(BasePage):
+    def __init__(self, master, app):
+        self.records = load_json("ledger.json", [])
+        super().__init__(master, app, "简易记账")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 顶部统计
+        top = tk.Frame(wrap, bg=THEME["BG"])
+        top.pack(fill="x", pady=(0, 10))
+        for title, key, color in [("总支出", "out", THEME["ERROR"]),
+                                   ("总收入", "in", THEME["SUCCESS"]),
+                                   ("结余", "net", THEME["PRIMARY"])]:
+            c = RoundedContainer(top, radius=12, padx=14, pady=12)
+            c.pack(side="left", fill="x", expand=True, padx=4)
+            tk.Label(c.inner, text=title, bg=THEME["CARD"], fg=THEME["MUTED"],
+                     font=("Microsoft YaHei", 9)).pack(anchor="w")
+            self.stats_lbl = getattr(self, f"lbl_{key}", None)
+            lbl = tk.Label(c.inner, text="¥0.00", bg=THEME["CARD"], fg=color,
+                           font=("Consolas", 20, "bold"))
+            lbl.pack(anchor="w", pady=(2,0))
+            setattr(self, f"lbl_{key}", lbl)
+        # 添加表单
+        form_card = RoundedContainer(wrap, radius=12, padx=14, pady=12)
+        form_card.pack(fill="x", pady=(0, 10))
+        f = tk.Frame(form_card.inner, bg=THEME["CARD"])
+        f.pack(fill="x")
+        self.typ = tk.StringVar(value="支出")
+        for t in ["支出", "收入"]:
+            rb = tk.Radiobutton(f, text=t, value=t, variable=self.typ, bg=THEME["CARD"],
+                                fg=THEME["TEXT"], selectcolor=THEME["CARD"],
+                                activebackground=THEME["CARD"], font=("Microsoft YaHei", 10))
+            rb.pack(side="left", padx=4)
+        # 金额
+        tk.Label(f, text="金额:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10)).pack(side="left", padx=(12,2))
+        rc1 = RoundedContainer(f, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc1.pack(side="left")
+        self.amt = tk.StringVar()
+        tk.Entry(rc1.inner, textvariable=self.amt, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, width=10, font=("Consolas", 11),
+                 insertbackground=THEME["TEXT"]).pack()
+        # 分类
+        tk.Label(f, text="分类:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10)).pack(side="left", padx=(12,2))
+        self.cat_v = tk.StringVar(value="餐饮")
+        self.cb = ttk.Combobox(f, textvariable=self.cat_v,
+                               values=["餐饮", "交通", "购物", "娱乐", "住房", "医疗", "教育",
+                                       "工资", "奖金", "红包", "其他"],
+                               width=8, state="normal")
+        self.cb.pack(side="left")
+        # 日期
+        tk.Label(f, text="日期:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10)).pack(side="left", padx=(12,2))
+        self.date_v = tk.StringVar(value=datetime.date.today().strftime("%Y-%m-%d"))
+        rc2 = RoundedContainer(f, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc2.pack(side="left")
+        tk.Entry(rc2.inner, textvariable=self.date_v, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, width=12, font=("Consolas", 10),
+                 insertbackground=THEME["TEXT"]).pack()
+        # 备注
+        tk.Label(f, text="备注:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10)).pack(side="left", padx=(12,2))
+        self.note_v = tk.StringVar()
+        rc3 = RoundedContainer(f, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc3.pack(side="left", fill="x", expand=True)
+        tk.Entry(rc3.inner, textvariable=self.note_v, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, font=("Microsoft YaHei", 10),
+                 insertbackground=THEME["TEXT"]).pack(fill="x")
+        RoundedButton(f, "➕ 记一笔", command=self._add, width=100, height=32,
+                      radius=8).pack(side="left", padx=8)
+        # 列表
+        list_card = RoundedContainer(wrap, radius=12, padx=8, pady=8)
+        list_card.pack(fill="both", expand=True)
+        head = tk.Frame(list_card.inner, bg=THEME["CARD"])
+        head.pack(fill="x", padx=6, pady=(2,4))
+        for t, w in [("日期", 12), ("类型", 6), ("分类", 8), ("备注", 26), ("金额", 12), ("操作", 6)]:
+            tk.Label(head, text=t, fg=THEME["MUTED"], bg=THEME["CARD"],
+                     font=("Microsoft YaHei", 9, "bold"), anchor="w", width=w).pack(side="left", padx=2)
+        scroll_fr = tk.Frame(list_card.inner, bg=THEME["CARD"])
+        scroll_fr.pack(fill="both", expand=True, padx=6)
+        self.cv = tk.Canvas(scroll_fr, bg=THEME["CARD"], highlightthickness=0)
+        self.cv.pack(side="left", fill="both", expand=True)
+        sb = tk.Scrollbar(scroll_fr, orient="vertical", command=self.cv.yview,
+                          bg=THEME["CARD"], troughcolor=THEME["HOVER"],
+                          activebackground=THEME["PRIMARY"])
+        sb.pack(side="right", fill="y")
+        self.cv.configure(yscrollcommand=sb.set)
+        self.lf = tk.Frame(self.cv, bg=THEME["CARD"])
+        self.cv.create_window((0,0), window=self.lf, anchor="nw")
+        self.lf.bind("<Configure>", lambda e: self.cv.configure(scrollregion=self.cv.bbox("all")))
+        self._recalc()
+        self._render()
+
+    def _recalc(self):
+        total_in = sum(r["amount"] for r in self.records if r.get("type") == "收入")
+        total_out = sum(r["amount"] for r in self.records if r.get("type") != "收入")
+        self.lbl_in.configure(text=f"¥{total_in:.2f}")
+        self.lbl_out.configure(text=f"¥{total_out:.2f}")
+        self.lbl_net.configure(text=f"¥{total_in - total_out:.2f}")
+
+    def _render(self):
+        for c in self.lf.winfo_children():
+            c.destroy()
+        sorted_r = sorted(self.records, key=lambda r: r.get("date", ""), reverse=True)
+        if not sorted_r:
+            tk.Label(self.lf, text="暂无记录，快记一笔吧！",
+                     fg=THEME["MUTED"], bg=THEME["CARD"], font=("Microsoft YaHei", 11), pady=30).pack()
+        for idx, r in enumerate(sorted_r):
+            bg = THEME["BG"] if idx % 2 == 0 else THEME["CARD"]
+            row = tk.Frame(self.lf, bg=bg)
+            row.pack(fill="x", pady=1)
+            is_in = r.get("type") == "收入"
+            amt_color = THEME["SUCCESS"] if is_in else THEME["ERROR"]
+            sign = "+" if is_in else "-"
+            tk.Label(row, text=r.get("date",""), width=12, anchor="w",
+                     fg=THEME["TEXT"], bg=bg, font=("Consolas", 10)).pack(side="left", padx=2, ipady=6)
+            tk.Label(row, text=r.get("type",""), width=6, anchor="w",
+                     fg=THEME["TEXT"], bg=bg, font=("Microsoft YaHei", 10)).pack(side="left", padx=2)
+            tk.Label(row, text=r.get("category",""), width=8, anchor="w",
+                     fg=THEME["TEXT"], bg=bg, font=("Microsoft YaHei", 10)).pack(side="left", padx=2)
+            tk.Label(row, text=r.get("note",""), width=26, anchor="w",
+                     fg=THEME["MUTED"], bg=bg, font=("Microsoft YaHei", 10)).pack(side="left", padx=2)
+            tk.Label(row, text=f"{sign}¥{r['amount']:.2f}", width=12, anchor="e",
+                     fg=amt_color, bg=bg, font=("Consolas", 11, "bold")).pack(side="left", padx=2)
+            # 原始 index
+            orig_idx = self.records.index(r)
+            del_btn = RoundedButton(row, "删", command=lambda i=orig_idx: self._del(i),
+                                    width=44, height=24, radius=6, bg=THEME["ERROR"])
+            del_btn.pack(side="left", padx=4)
+
+    def _add(self):
         try:
-            data = DataManager.load('notes.json', {})
-            notes = data.get('notes', [])
-            text = self.text_widget.get('1.0', 'end-1c')
-            geom = self.geometry()
-            color = self.cget('bg')
-            while len(notes) <= self.note_id:
-                notes.append({'text': '', 'geometry': '180x150+100+100',
-                              'color': '#FFF9C4', 'name': ''})
-            notes[self.note_id] = {
-                'text': text, 'geometry': geom,
-                'color': color, 'name': self._name}
-            data['notes'] = notes
-            DataManager.save('notes.json', data)
+            amt = float(self.amt.get())
+        except Exception:
+            messagebox.showwarning("提示", "请输入有效金额"); return
+        try:
+            datetime.datetime.strptime(self.date_v.get(), "%Y-%m-%d")
+        except Exception:
+            messagebox.showwarning("提示", "日期格式应为 YYYY-MM-DD"); return
+        if amt <= 0:
+            messagebox.showwarning("提示", "金额需大于 0"); return
+        self.records.append({
+            "type": self.typ.get(),
+            "amount": amt,
+            "category": self.cat_v.get(),
+            "date": self.date_v.get(),
+            "note": self.note_v.get().strip(),
+        })
+        save_json("ledger.json", self.records)
+        self.amt.set("")
+        self.note_v.set("")
+        self._recalc()
+        self._render()
+
+    def _del(self, idx):
+        if not messagebox.askyesno("确认", "删除这条记录？"): return
+        del self.records[idx]
+        save_json("ledger.json", self.records)
+        self._recalc()
+        self._render()
+
+# =========================================================
+#  16. 时光胶囊
+# =========================================================
+class CapsulePage(BasePage):
+    def __init__(self, master, app):
+        self.capsules = load_json("capsules.json", [])
+        super().__init__(master, app, "时光胶囊")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        # 新建
+        add_card = RoundedContainer(wrap, radius=14, padx=14, pady=12)
+        add_card.pack(fill="x", pady=(0, 10))
+        a = tk.Frame(add_card.inner, bg=THEME["CARD"])
+        a.pack(fill="x")
+        tk.Label(a, text="标题:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, sticky="w")
+        self.t_v = tk.StringVar()
+        rc1 = RoundedContainer(a, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc1.grid(row=0, column=1, sticky="we", padx=6, pady=3)
+        tk.Entry(rc1.inner, textvariable=self.t_v, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, font=("Microsoft YaHei", 10), insertbackground=THEME["TEXT"]).pack(fill="x")
+        tk.Label(a, text="解锁日期:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=2, sticky="w", padx=(8,0))
+        future = (datetime.date.today() + datetime.timedelta(days=7)).strftime("%Y-%m-%d")
+        self.d_v = tk.StringVar(value=future)
+        rc2 = RoundedContainer(a, bg=THEME["BG"], radius=8, padx=8, pady=2)
+        rc2.grid(row=0, column=3, sticky="we", padx=6, pady=3)
+        tk.Entry(rc2.inner, textvariable=self.d_v, bg=THEME["BG"], fg=THEME["TEXT"],
+                 bd=0, font=("Consolas", 10), insertbackground=THEME["TEXT"]).pack(fill="x")
+        RoundedButton(a, "🔒 封存胶囊", command=self._add, width=120, height=32,
+                      radius=8).grid(row=0, column=4, padx=6)
+        a.grid_columnconfigure(1, weight=1)
+        a.grid_columnconfigure(3, weight=1)
+        tk.Label(add_card.inner, text="内容:", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").pack(fill="x", pady=(6,2))
+        rc3 = RoundedContainer(add_card.inner, bg=THEME["BG"], radius=10, padx=10, pady=8)
+        rc3.pack(fill="x")
+        self.txt = tk.Text(rc3.inner, bg=THEME["BG"], fg=THEME["TEXT"], bd=0,
+                           height=4, font=("Microsoft YaHei", 11),
+                           insertbackground=THEME["TEXT"], wrap="word")
+        self.txt.pack(fill="x")
+        # 列表
+        self.list_wrap = tk.Frame(wrap, bg=THEME["BG"])
+        self.list_wrap.pack(fill="both", expand=True)
+        self._render_list()
+
+    def _render_list(self):
+        for c in self.list_wrap.winfo_children():
+            c.destroy()
+        card = RoundedContainer(self.list_wrap, radius=14, padx=12, pady=12)
+        card.pack(fill="both", expand=True)
+        if not self.capsules:
+            tk.Label(card.inner, text="还没有胶囊，给未来的自己写一封信吧 💌",
+                     fg=THEME["MUTED"], bg=THEME["CARD"], font=("Microsoft YaHei", 11), pady=30).pack()
+            return
+        sorted_c = sorted(self.capsules, key=lambda x: x.get("unlock_date", ""))
+        today = datetime.date.today()
+        for i, cap in enumerate(sorted_c):
+            try:
+                ud = datetime.datetime.strptime(cap["unlock_date"], "%Y-%m-%d").date()
+            except Exception:
+                continue
+            unlocked = today >= ud
+            tone = THEME["SUCCESS"] if unlocked else THEME["WARNING"]
+            title_bg = THEME["BG"] if i % 2 == 0 else THEME["CARD"]
+            row = tk.Frame(card.inner, bg=title_bg)
+            row.pack(fill="x", pady=3)
+            header = tk.Frame(row, bg=title_bg)
+            header.pack(fill="x", padx=4, pady=4)
+            icon = "🔓" if unlocked else "🔒"
+            tk.Label(header, text=f"{icon} {cap.get('title','未命名')}", bg=title_bg,
+                     fg=THEME["TEXT"], font=("Microsoft YaHei", 11, "bold"), anchor="w").pack(side="left")
+            left = (ud - today).days
+            status = "已解锁" if unlocked else f"还有 {left} 天解锁"
+            tk.Label(header, text=status, bg=title_bg, fg=tone,
+                     font=("Microsoft YaHei", 10, "bold")).pack(side="left", padx=12)
+            tk.Label(header, text=f"解锁日: {cap['unlock_date']}", bg=title_bg, fg=THEME["MUTED"],
+                     font=("Consolas", 10)).pack(side="left", padx=12)
+            del_btn = RoundedButton(header, "删除", command=lambda cc=cap: self._del(cc),
+                                    width=56, height=24, radius=6, bg=THEME["ERROR"])
+            del_btn.pack(side="right", padx=4)
+            # 内容
+            content_fr = tk.Frame(row, bg=title_bg)
+            content_fr.pack(fill="x", padx=8, pady=(0,6))
+            if unlocked:
+                rc = RoundedContainer(content_fr, bg=THEME["CARD"], radius=10, padx=10, pady=10)
+                rc.pack(fill="x")
+                t = tk.Text(rc.inner, bg=THEME["CARD"], fg=THEME["TEXT"], height=5, bd=0,
+                            font=("Microsoft YaHei", 10), wrap="word")
+                t.pack(fill="x")
+                t.insert("1.0", cap.get("content", "") or "(空)")
+                t.configure(state="disabled")
+            else:
+                tk.Label(content_fr, text="🔒 🔒 🔒 内容已封存，到达解锁日期后才能查看 🔒 🔒 🔒",
+                         bg=title_bg, fg=THEME["MUTED"],
+                         font=("Microsoft YaHei", 10, "bold"), pady=10).pack()
+
+    def _add(self):
+        t = self.t_v.get().strip()
+        d = self.d_v.get().strip()
+        content = self.txt.get("1.0", "end").rstrip("\n")
+        if not t:
+            messagebox.showwarning("提示", "请输入标题"); return
+        try:
+            ud = datetime.datetime.strptime(d, "%Y-%m-%d").date()
+        except Exception:
+            messagebox.showwarning("提示", "日期格式应为 YYYY-MM-DD"); return
+        if not content.strip():
+            if not messagebox.askyesno("提示", "内容为空，确定封存空胶囊？"):
+                return
+        self.capsules.append({"title": t, "unlock_date": d, "content": content,
+                              "created": datetime.date.today().strftime("%Y-%m-%d")})
+        save_json("capsules.json", self.capsules)
+        self.t_v.set(""); self.txt.delete("1.0", "end")
+        self._render_list()
+        messagebox.showinfo("成功", f"✅ 胶囊已封存！将于 {d} 解锁")
+
+    def _del(self, cap):
+        if not messagebox.askyesno("确认", "删除这个胶囊？"): return
+        if cap in self.capsules:
+            self.capsules.remove(cap)
+        save_json("capsules.json", self.capsules)
+        self._render_list()
+
+# =========================================================
+#  17. 二维码生成 (艺术化像素图案, 基于哈希)
+# =========================================================
+class QRPage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "二维码生成")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        top = tk.Frame(wrap, bg=THEME["BG"])
+        top.pack(fill="x", pady=(0, 10))
+        left = tk.Frame(top, bg=THEME["BG"])
+        left.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        tk.Label(left, text="输入文本", bg=THEME["BG"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 10, "bold"), anchor="w").pack(fill="x")
+        rc1 = RoundedContainer(left, bg=THEME["CARD"], radius=12, padx=10, pady=8)
+        rc1.pack(fill="x")
+        self.txt = tk.Text(rc1.inner, bg=THEME["CARD"], fg=THEME["TEXT"], bd=0, height=4,
+                           font=("Consolas", 11), insertbackground=THEME["TEXT"], wrap="word")
+        self.txt.pack(fill="x")
+        self.txt.insert("1.0", "https://www.example.com")
+        right = tk.Frame(top, bg=THEME["BG"])
+        right.pack(side="left", fill="y")
+        tk.Frame(right, bg=THEME["BG"], height=14).pack()
+        RoundedButton(right, "⬛ 生成像素码", command=self._gen, width=160, height=36, radius=10).pack(pady=4)
+        RoundedButton(right, "💾 保存为 .txt 图案", command=self._save_txt, bg=THEME["CARD"],
+                      fg=THEME["TEXT"], width=160, height=36, radius=10).pack(pady=4)
+        # 显示
+        disp_card = RoundedContainer(wrap, radius=16, padx=16, pady=16)
+        disp_card.pack(fill="both", expand=True)
+        center = tk.Frame(disp_card.inner, bg=THEME["CARD"])
+        center.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(center, width=420, height=420, bg=THEME["CARD"], highlightthickness=0)
+        self.canvas.pack(pady=8)
+        self.canvas.bind("<Configure>", lambda e: self._draw())
+        self.text_lbl = tk.Label(center, text="", bg=THEME["CARD"], fg=THEME["MUTED"],
+                                 font=("Microsoft YaHei", 10), wraplength=420, justify="center")
+        self.text_lbl.pack(pady=(0,8))
+        self.last_pattern = None
+        self.after(40, self._gen)
+
+    def _gen(self):
+        text = self.txt.get("1.0", "end").rstrip("\n").strip()
+        if not text:
+            messagebox.showwarning("提示", "请输入文本"); return
+        self.text_lbl.configure(text=text)
+        self.last_pattern = self._make_pattern(text, size=29)
+        self.last_text = text
+        self._draw()
+
+    @staticmethod
+    def _make_pattern(text, size=29):
+        # 基于文本哈希 + LFSR 生成确定性像素图案
+        seed_bytes = hashlib.sha256(text.encode("utf-8")).digest()
+        pattern = [[0]*size for _ in range(size)]
+        # 三个定位方块
+        def place_finder(r, c):
+            for i in range(7):
+                for j in range(7):
+                    on = False
+                    if i in (0, 6) or j in (0, 6): on = True
+                    elif 2 <= i <= 4 and 2 <= j <= 4: on = True
+                    pattern[r+i][c+j] = 1 if on else 0
+        place_finder(0, 0)
+        place_finder(0, size-7)
+        place_finder(size-7, 0)
+        # 填充其余部分，排除 finder 周围 8 像素边框
+        state = list(seed_bytes)  # 32 bytes
+        def rand_bit():
+            # LFSR 混合
+            s = state
+            new = (s[0] ^ (s[2] << 1) ^ (s[3] << 2) ^ s[-1]) & 0xFF
+            for k in range(len(s)-1):
+                s[k] = s[k+1]
+            s[-1] = new
+            return new & 1
+        # 中间同步图案 (垂直)
+        for i in range(8, size-8):
+            pattern[i][6] = 1 if i % 2 == 0 else 0
+            pattern[6][i] = 1 if i % 2 == 0 else 0
+        # 右下角小对齐图案
+        if size >= 25:
+            ar, ac = size-9, size-9
+            for i in range(5):
+                for j in range(5):
+                    on = False
+                    if i in (0,4) or j in (0,4): on = True
+                    elif i == 2 and j == 2: on = True
+                    pattern[ar+i][ac+j] = 1 if on else 0
+        # 数据区域填充
+        for r in range(size):
+            for c in range(size):
+                # 跳过 finder
+                if (r < 8 and c < 8) or (r < 8 and c >= size-8) or (r >= size-8 and c < 8):
+                    continue
+                if r == 6 or c == 6:  # 同步
+                    continue
+                if size-9 <= r < size-4 and size-9 <= c < size-4:  # 对齐图案
+                    continue
+                # mask 0: (r+c)%2 == 0 -> 翻转
+                b = rand_bit()
+                if (r + c) % 2 == 0:
+                    b = 1 - b
+                pattern[r][c] = b
+        return pattern
+
+    def _draw(self):
+        c = self.canvas
+        c.delete("all")
+        if not self.last_pattern:
+            return
+        W = c.winfo_width() or 420
+        H = c.winfo_height() or 420
+        S = min(W, H)
+        pat = self.last_pattern
+        n = len(pat)
+        pad = S * 0.05
+        cell = (S - 2*pad) / n
+        # 白底
+        c.create_rectangle(0, 0, W, H, fill="white", outline="")
+        # 静区
+        c.create_rectangle(pad, pad, S-pad, S-pad, fill="white", outline="")
+        for r in range(n):
+            for col in range(n):
+                if pat[r][col]:
+                    x0 = pad + col * cell
+                    y0 = pad + r * cell
+                    c.create_rectangle(x0, y0, x0+cell, y0+cell, fill="#000000", outline="")
+
+    def _save_txt(self):
+        if not self.last_pattern:
+            return
+        fn = filedialog.asksaveasfilename(defaultextension=".txt",
+                                          filetypes=[("文本文件", "*.txt")],
+                                          title="保存图案")
+        if not fn: return
+        try:
+            with open(fn, "w", encoding="utf-8") as f:
+                f.write(f"文本: {self.last_text}\n\n")
+                for row in self.last_pattern:
+                    f.write("".join("█" if x else "·" for x in row) + "\n")
+            messagebox.showinfo("保存", f"已保存到: {fn}")
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+# =========================================================
+#  18. 主题切换 (独立页面, 同时顶部栏也有入口)
+# =========================================================
+class ThemePage(BasePage):
+    def __init__(self, master, app):
+        super().__init__(master, app, "主题切换")
+
+    def build_content(self):
+        wrap = tk.Frame(self, bg=THEME["BG"])
+        wrap.pack(fill="both", expand=True, padx=24, pady=8)
+        card = RoundedContainer(wrap, radius=16, padx=24, pady=24)
+        card.pack(fill="both", expand=True)
+        tk.Label(card.inner, text="🎨 显示主题", bg=THEME["CARD"], fg=THEME["TEXT"],
+                 font=("Microsoft YaHei", 18, "bold")).pack(pady=(8,4), anchor="w")
+        tk.Label(card.inner, text="选择你喜欢的界面风格，切换后立即生效。",
+                 bg=THEME["CARD"], fg=THEME["MUTED"],
+                 font=("Microsoft YaHei", 10)).pack(anchor="w", pady=(0, 20))
+        btns = tk.Frame(card.inner, bg=THEME["CARD"])
+        btns.pack(fill="x")
+        dark_card = RoundedContainer(btns, bg="#1A1A1F", radius=14, padx=16, pady=16)
+        dark_card.pack(side="left", fill="both", expand=True, padx=6)
+        dark_card.inner.configure(bg="#1A1A1F")
+        self._theme_preview(dark_card.inner, "#141418", "#272730", "#6366F1", "#E8E8F0")
+        RoundedButton(dark_card.inner, "🌙 深色主题 (当前)" if THEME_MODE == "dark" else "🌙 深色主题",
+                      command=lambda: self._apply("dark"), width=180, height=38, radius=10,
+                      bg="#6366F1").pack(pady=(16,0))
+        light_card = RoundedContainer(btns, bg="#F5F6FA", radius=14, padx=16, pady=16)
+        light_card.pack(side="left", fill="both", expand=True, padx=6)
+        light_card.inner.configure(bg="#F5F6FA")
+        self._theme_preview(light_card.inner, "#EDEEF3", "#FFFFFF", "#6366F1", "#1A1A2E")
+        RoundedButton(light_card.inner, "☀️ 浅色主题 (当前)" if THEME_MODE == "light" else "☀️ 浅色主题",
+                      command=lambda: self._apply("light"), width=180, height=38, radius=10,
+                      bg="#6366F1").pack(pady=(16,0))
+        # 设置保存
+        self.auto_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(card.inner, text="记住我的主题偏好（重启后保留）", variable=self.auto_var,
+                       bg=THEME["CARD"], fg=THEME["TEXT"], selectcolor=THEME["CARD"],
+                       activebackground=THEME["CARD"], font=("Microsoft YaHei", 10)).pack(anchor="w", pady=(24,6))
+
+    def _theme_preview(self, parent, sb, cb, pb, tx):
+        p = tk.Frame(parent, bg=cb, height=180)
+        p.pack(fill="x")
+        sb_fr = tk.Frame(p, bg=sb, width=60)
+        sb_fr.pack(side="left", fill="y")
+        tk.Frame(sb_fr, bg=pb, height=20, width=30).pack(pady=10, padx=10, anchor="w")
+        for _ in range(4):
+            tk.Frame(sb_fr, bg="#888888", height=14, width=40).pack(pady=4, padx=8, anchor="w")
+        main = tk.Frame(p, bg=cb)
+        main.pack(side="left", fill="both", expand=True, padx=8, pady=8)
+        tk.Frame(main, bg=pb, height=18).pack(fill="x", pady=(0,6))
+        for _ in range(3):
+            cell = tk.Frame(main, bg=sb, height=36)
+            cell.pack(fill="x", pady=3)
+            tk.Frame(cell, bg=pb, height=22, width=22).pack(side="left", padx=6, pady=7)
+            info = tk.Frame(cell, bg=sb)
+            info.pack(side="left", fill="both", expand=True, pady=6)
+            tk.Frame(info, bg=tx, height=8).pack(fill="x", padx=4, pady=2)
+            tk.Frame(info, bg=tx, height=6).pack(fill="x", padx=4, pady=1)
+
+    def _apply(self, mode):
+        global THEME_MODE
+        if mode == THEME_MODE:
+            return
+        if mode == "dark":
+            THEME_MODE = "light"  # 反向触发 toggle
+        else:
+            THEME_MODE = "dark"
+        self.app.toggle_theme_from_ui()
+
+# =========================================================
+#  工具定义 & 注册
+# =========================================================
+TOOL_CATEGORIES = [
+    ("★ 常用", [
+        ("JSON格式化", "📋", "美化/压缩/校验 JSON", JsonPage),
+        ("Base64编解码", "🔐", "文本与 Base64 互转", Base64Page),
+        ("密码生成器", "🔑", "一键生成安全密码", PasswordPage),
+        ("单位换算", "📏", "长度/重量/温度换算", UnitPage),
+        ("颜色选择器", "🎨", "选颜色查看 HEX/RGB", ColorPage),
+        ("随机决定器", "🎲", "自定义/抽签/抛硬币", DeciderPage),
+    ]),
+    ("T 文本", [
+        ("字数统计", "📝", "统计字符/中文/单词/行数", WordCountPage),
+        ("文本对比", "🔍", "找出文本差异", DiffPage),
+        ("Markdown预览", "📑", "编写并预览 Markdown", MarkdownPage),
+        ("正则测试", "🧪", "正则表达式在线测试", RegexPage),
+    ]),
+    ("⊙ 时间", [
+        ("番茄钟", "🍅", "专注 25 分钟工作法", PomodoroPage),
+        ("倒计时", "⏳", "自定义时分秒倒计时", CountdownPage),
+        ("纪念日管理", "📅", "记录重要日期倒计时", AnniversaryPage),
+    ]),
+    ("⚙ 杂项", [
+        ("桌面便签", "🗒", "悬浮便签自动保存", StickyNotePage),
+        ("简易记账", "💰", "收支记录一目了然", LedgerPage),
+        ("时光胶囊", "💌", "写给未来的自己", CapsulePage),
+        ("二维码生成", "⬛", "艺术化像素二维码", QRPage),
+    ]),
+    ("⚒ 系统", [
+        ("主题切换", "🎨", "深色/浅色主题选择", ThemePage),
+    ]),
+]
+
+def all_tools():
+    """展开为 (分类名, 工具tuple) 的列表"""
+    out = []
+    for cat_name, tools in TOOL_CATEGORIES:
+        for t in tools:
+            out.append((cat_name, t))
+    return out
+
+# =========================================================
+#  内联图标 (小 PNG, base64)
+# =========================================================
+# 32x32 简单 YB 图标 PNG (手工生成的小图标)
+_icon_b64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAA7EAAAOxAGVKw4bAAADRklE"
+    "QVRYhe2XS2gTQRiFv7S0tLi3btwIlfAiHjyAC3jwAHjwADz4ABx5AA86Bc+8BIPANHDp37ty5c+fM"
+    "fCcrLy/fmzGze+bMzJxrYkhRUFBQUxPjN9T6A7kqLi73s0Q2ePB5vsdl2QVBYFCi5/l8Hi4nJ9Pr9"
+    "eL1eLpcr8P7+Ph0Oh5FIJJKbEAIBAKBQOBf7AEAwHQ6jUKh8Hg8Ho+Hw+HA4XAkEolwuVwYDAa5Xi4"
+    "UCsHm81m83g8lUqFsNvtcLvdWq/X0Wg0JJKVSqVQKBQwGAwwGAy8XC4ikYhhGIa4XC5arZbJZBJqtfr"
+    "4XQ6hmHw+/3Q6XQ4HA7xeDyKRCLFYrFIJpNMJrNwu91wu90wmUwcDgdhGIbhcDhAIpGgGAacTqcWi8V"
+    "yuRwOh8VisRgMBpxO59i2bbvdboTDYLfbKZfL8Xg8hmHw+Xy81+uttVr1er34fD7KZjK9Xm+Vy+Twe"
+    "uVwuGo0GHx8f5HI5JpOJxWLBbDZ7nkAhELfb7QSDQbFYLJpOJ4/E4URRFKSkpjh49ur+/v3t7ewX6"
+    "/f3Nzs6+e/duhmGYlJQU9/X1/f39jY2Nbdu27ezZs7i4uMOHD/f09PS6rq7u2NhYVVXV0tLSVqu14cOH"
+    "T6fTOHjw4JeXlzdu3Dh6vR4mk+E8Ho9EosG73R6KRqPRaDR6vV4qlYqenp65ubnT19f39fVVU1PTBw8e"
+    "9PLy8vb2duXk5Nzd3X17e+vv7//w8PD4+PiQy+U4nU7JZDKfz9/ZWq8Xj8eztLR0a2trra2tZ2dnPz8/"
+    "+fDhQ61Wy76+vh6Px9PS0nJycnJ+fr7Ozsy9duvTVV19zcnLq6+t7eHh4eXn529vbY2JiYm5u7oKCgnp6elpe"
+    "Xl1dXV19fX2tra19f3/f395+QkDAsLGXXqlLq6uppOp+vq6pqdnZ2Ojs7d1NSkqqrq4eHh7e3t8/Pz39z"
+    "c4Nq1a8+ePdutVovn80+n08ePH+/i4qKamhrT6fTs7OxcVFSkVCp1eXn58+fP2tra2tpaamvry8rK0t7ezs"
+    "jIyM7O/vv3LlyuTkZLRaLReePXv26NGj+fn5n5+fW61Wg8Gwvb2d5/N5eXn5y8tLS0vL4cOHf/z48e3b"
+    "t9/c3Mz4+PjExMQff/wRFBQU8/v27S5dunT//v1ffv2pqKioqqrK4XCIyMjIxYsX2djY1NTUNBqNvb29"
+    "w8PDX19fSqVSFBoaWlNTk8DAQGdn5w8//OC4ceMmjUYCgUBgZGQkODjY2tpafHw8PT29sLAQVVVVU1PTf/Pm"
+    "zcLCQp1OR2RkpJaWFr9fL51OBwKBQGhoaA7wDa2srS01Nvb6+rqqrC4sKBAJpaWmxWAyJRCLHjx/PwMDA1"
+    "taWqqqqoKAgPT2doVDQarVqtfr8/Hzy8nIaDAYDAYjMzPz888/H4lEwp6enlZWVl9fX5XL5ypUryrNmz"
+    "Q8ePH4+Pj0+c+n4fD4bFYxGAwkJ+f7+/vL41Gw7lz5/74448dHx9/+eWXXl5eSqfTzZs3Hxsby9Sp0"
+    "+vp6bGxsY2Pj2traunTp0pUrV958883W1tZu3br1r7/+2tra+u9//7u0tDStVgszMzPz+++/j81Gw6FD"
+    "h4ODg2bNnv3HjxsjISH744YdLly796aefPv300+3t7Tds2DBlZWX19PScnJzcvn37ixcvDh8+fPDgQcLhcJKSk"
+    "hqNRh6Px3x8fFlZWUQQ4IEHHnB3d3/33Xesrq5u3bp1+/btw4cPP/300+PHj9+2bdvDhw8P"
+    "ODjYsGHDhQsXHjhw4EGDBw4ciIiIOH/+fI/H43x9fU1PT//6669PTk4uX778rbfeKioqSk1N/eDAA"
+    "x8bG/v3vf7e1tS0tLW3dunXOnDnzww8/fPDgweHh4Tt37hw+fPjo0aOnTp3aWlpmz579/fbb2dlZ"
+    "eXl5Y8eOLVq06Je//v3JJ588ePAgOTk5AQMGfOONN86bN2/evHn8+PHj06dPDwkJW7Zs2bRp0+Li"
+    "4oiIiIODg7/++mutVqtOp9OxY8cOHTp07ty5M2fOnDt37ty5c+fOnTt37ty5c+fOnTt37ty5"
+    "c+fO//8P6FhH9T+L8xMAAAAASUVORK5CYII="
+)
+
+def _find_icon_file():
+    """查找同目录下的 icon.ico 文件"""
+    # 1. PyInstaller 单文件解包目录
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        p = os.path.join(meipass, "icon.ico")
+        if os.path.isfile(p):
+            return p
+    # 2. 脚本/EXE 所在目录
+    try:
+        base = os.path.dirname(os.path.abspath(sys.argv[0]))
+        p = os.path.join(base, "icon.ico")
+        if os.path.isfile(p):
+            return p
+    except Exception:
+        pass
+    # 3. 当前工作目录
+    try:
+        p = os.path.join(os.getcwd(), "icon.ico")
+        if os.path.isfile(p):
+            return p
+    except Exception:
+        pass
+    return None
+
+
+def try_set_icon(root):
+    """设置窗口图标：优先使用同目录下的 icon.ico"""
+    # 1. 优先用同目录 icon.ico（最佳，原生 ico 多分辨率）
+    ico = _find_icon_file()
+    if ico:
+        try:
+            root.iconbitmap(default=ico)
+            return
+        except Exception:
+            pass
+    # 2. 回退：内嵌 base64 PNG
+    try:
+        data = base64.b64decode(_icon_b64)
+        tmp = os.path.join(DATA_DIR, "icon_tmp.png")
+        with open(tmp, "wb") as f:
+            f.write(data)
+        try:
+            img = tk.PhotoImage(file=tmp)
+            root.iconphoto(True, img)
+            root._icon_keep = img  # 保留引用
+        except Exception:
+            pass
+    except Exception:
+        pass
+    except Exception:
+        pass
+
+# =========================================================
+#  主应用
+# =========================================================
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        s = load_json("settings.json", {})
+        global THEME, THEME_MODE
+        if s.get("theme") == "light":
+            THEME.update(LIGHT)
+            THEME_MODE = "light"
+        else:
+            THEME.update(DARK)
+            THEME_MODE = "dark"
+        self.title("闫巴工具箱 YBv1.2")
+        self.geometry("680x720")
+        self.minsize(560, 600)
+        self.configure(bg=THEME["BG"])
+        try_set_icon(self)
+        self.current_page_frame = None
+        self._cards_mode = True
+        self._build_ui()
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.report_callback_exception = self._on_exception
+
+    def _on_exception(self, etype, value, tb):
+        try:
+            messagebox.showerror("应用错误", f"{etype.__name__}: {value}")
         except Exception:
             pass
 
-    def _close(self):
+    def _build_ui(self):
+        for c in self.winfo_children():
+            c.destroy()
+        # 顶部栏：占位给主题按钮，不与内容重叠
+        topbar = tk.Frame(self, bg=THEME["BG"], height=36)
+        topbar.pack(fill="x", side="top")
+        topbar.pack_propagate(False)
+        self.content_frame = tk.Frame(self, bg=THEME["BG"])
+        self.content_frame.pack(fill="both", expand=True)
+        self.go_home(initial=True)
+        self._add_home_theme_btn(topbar)
+
+    def go_home(self, initial=False):
         try:
-            self._save()
-            data = DataManager.load('notes.json', {})
-            notes = data.get('notes', [])
-            if self.note_id < len(notes):
-                notes[self.note_id]['closed'] = True
-                data['notes'] = notes
-                DataManager.save('notes.json', data)
-        except Exception:
-            pass
+            for c in self.content_frame.winfo_children():
+                c.destroy()
+            self.current_page_frame = None
+            self._cards_mode = True
+            self._render_home(self.content_frame)
+            self.title("闫巴工具箱 YBv1.2")
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+    def _render_home(self, parent):
+        # 标题
+        tk.Label(parent, text="闫 巴 工 具 箱", font=("Microsoft YaHei", 20, "bold"),
+                 bg=THEME["BG"], fg=THEME["PRIMARY"]).pack(pady=(18, 3))
+        tk.Label(parent, text="— 便捷桌面小工具集 —",
+                 font=("Microsoft YaHei", 11), bg=THEME["BG"], fg=THEME["MUTED"]).pack(pady=(0, 10))
+        # 可滚动卡片列表
+        scroll_wrap = tk.Frame(parent, bg=THEME["BG"])
+        scroll_wrap.pack(fill="both", expand=True)
+        cv = tk.Canvas(scroll_wrap, bg=THEME["BG"], highlightthickness=0, bd=0)
+        sb = tk.Scrollbar(scroll_wrap, orient="vertical", command=cv.yview,
+                          bg=THEME["BG"], troughcolor=THEME["HOVER"],
+                          activebackground=THEME["PRIMARY"])
+        inner = tk.Frame(cv, bg=THEME["BG"])
+        inner_id = cv.create_window((0, 0), window=inner, anchor="n")
+        inner.bind("<Configure>",
+                   lambda e: cv.configure(scrollregion=cv.bbox("all")))
+        cv.configure(yscrollcommand=sb.set)
+        cv.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+        def _on_cv_config(e):
+            # 同步 inner 宽度 = Canvas 可视宽度（减去滚动条宽度），让卡片填满
+            try:
+                w = cv.winfo_width()
+                if w > 1:
+                    cv.itemconfigure(inner_id, width=w - 12)
+            except Exception:
+                pass
+        cv.bind("<Configure>", _on_cv_config)
+
+        def on_wheel(e):
+            cv.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        cv.bind_all("<MouseWheel>", on_wheel)
+        self._home_cv = cv
+        self._home_inner = inner
+        # 遍历所有分类的所有工具，垂直卡片列表
+        for cat_name, tools in TOOL_CATEGORIES:
+            for tool in tools:
+                self._make_home_card(inner, tool)
+
+    def _make_home_card(self, parent, tool):
+        name, icon, desc, page_cls = tool
+        # 卡片宽度跟随父容器（inner）变化：用 fill="x" + 绑定 <Configure> 动态调整高度
+        card = tk.Frame(parent, bg=THEME["CARD"], cursor="hand2", height=84)
+        card.pack_propagate(False)
+        card.pack(fill="x", padx=8, pady=5)
+        lf = tk.Frame(card, bg=THEME["CARD"])
+        lf.pack(side="left", padx=(16, 10), pady=8)
+        tk.Label(lf, text=icon, font=("Segoe UI Emoji", 30), bg=THEME["CARD"]).pack()
+        rf = tk.Frame(card, bg=THEME["CARD"])
+        rf.pack(side="left", fill="x", expand=True, pady=8)
+        tk.Label(rf, text=name, font=("Microsoft YaHei", 12, "bold"),
+                 bg=THEME["CARD"], fg=THEME["TEXT"]).pack(anchor="w")
+        tk.Label(rf, text=desc, font=("Microsoft YaHei", 10),
+                 bg=THEME["CARD"], fg=THEME["MUTED"]).pack(anchor="w", pady=(3, 0))
+        arrow = tk.Label(card, text="→", font=("Microsoft YaHei", 18),
+                        bg=THEME["CARD"], fg=THEME["PRIMARY"])
+        arrow.pack(side="right", padx=16)
+        hover_bg = "#2D2D44" if THEME_MODE == "dark" else "#F5F5F5"
+        normal_bg = THEME["CARD"]
+
+        def enter(e, c=card, l=lf, r=rf, a=arrow):
+            for w in [c, l, r, a] + list(l.winfo_children()) + list(r.winfo_children()):
+                try: w.configure(bg=hover_bg)
+                except Exception: pass
+        def leave(e, c=card, l=lf, r=rf, a=arrow):
+            for w in [c, l, r, a] + list(l.winfo_children()) + list(r.winfo_children()):
+                try: w.configure(bg=normal_bg)
+                except Exception: pass
+        def click(e, _cls=page_cls, _name=name):
+            try:
+                self.open_tool(_cls, _name)
+            except Exception as ex:
+                messagebox.showerror("错误", str(ex))
+        for w in [card, lf, rf, arrow] + list(lf.winfo_children()) + list(rf.winfo_children()):
+            w.bind("<Enter>", enter)
+            w.bind("<Leave>", leave)
+            w.bind("<Button-1>", click)
+
+    def open_tool(self, page_cls, name):
         try:
-            self.attributes('-topmost', False)
-            self.overrideredirect(False)
+            # 解绑主页的 MouseWheel，避免滚动事件影响功能页/被销毁控件
+            try:
+                self.unbind_all("<MouseWheel>")
+            except Exception:
+                pass
+            for c in self.content_frame.winfo_children():
+                c.destroy()
+            self._cards_mode = False
+            self.current_page_frame = page_cls(self.content_frame, self)
+            self.current_page_frame.pack(fill="both", expand=True)
+            self.title(f"{name} - 闫巴工具箱 YBv1.2")
+        except Exception as e:
+            import traceback
+            messagebox.showerror("打开失败", f"{e}\n\n{traceback.format_exc()}")
+            self.go_home()
+
+    def open_tool(self, page_cls, name):
+        try:
+            for c in self.content_frame.winfo_children():
+                c.destroy()
+            self._cards_mode = False
+            self.current_page_frame = page_cls(self.content_frame, self)
+            self.current_page_frame.pack(fill="both", expand=True)
+            self.title(f"{name} - 闫巴工具箱 YBv1.2")
+        except Exception as e:
+            messagebox.showerror("打开失败", str(e))
+            self.go_home()
+
+    def _add_home_theme_btn(self, topbar):
+        icon = "☀" if THEME_MODE == "dark" else "☾"
+        btn = tk.Label(topbar, text=icon, font=("Segoe UI", 14),
+                      bg=THEME["BG"], fg=THEME["MUTED"],
+                      cursor="hand2", padx=12, pady=6)
+        btn.pack(side="right", padx=10, pady=2)
+        btn.bind("<Button-1>", lambda e: self.toggle_theme_from_ui())
+        btn.bind("<Enter>", lambda e: btn.config(fg=THEME["PRIMARY"]))
+        btn.bind("<Leave>", lambda e: btn.config(fg=THEME["MUTED"]))
+        self._home_theme_btn = btn
+
+    def toggle_theme_from_ui(self):
+        try:
+            global THEME, THEME_MODE
+            if THEME_MODE == "dark":
+                THEME.update(LIGHT)
+                THEME_MODE = "light"
+            else:
+                THEME.update(DARK)
+                THEME_MODE = "dark"
+            s = load_json("settings.json", {})
+            s["theme"] = THEME_MODE
+            save_json("settings.json", s)
+            self.configure(bg=THEME["BG"])
+            self._build_ui()
+            self.title("闫巴工具箱 YBv1.2")
+        except Exception as e:
+            messagebox.showerror("主题切换失败", str(e))
+
+    def _on_close(self):
+        try:
+            s = load_json("settings.json", {})
+            s["theme"] = THEME_MODE
+            save_json("settings.json", s)
         except Exception:
             pass
         self.destroy()
 
-    def _toggle_top(self):
-        try:
-            self.attributes('-topmost', not self.attributes('-topmost'))
-        except Exception:
-            pass
 
-    def _new_note(self):
-        try:
-            self._main_app.add_note()
-        except Exception:
-            pass
-
-    def _change_color(self):
-        try:
-            c = colorchooser.askcolor(title="选择便签颜色",
-                                        color=self.cget('bg'),
-                                        parent=self._main_app)
-            if c and c[1]:
-                new_color = c[1]
-                self.configure(bg=new_color)
-                try:
-                    title_bar = self.winfo_children()[0]
-                    title_bar.configure(bg=new_color)
-                    for ch in title_bar.winfo_children():
-                        try:
-                            ch.configure(bg=new_color)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-                self.text_widget.configure(bg=new_color)
-                self._save()
-        except Exception:
-            pass
-
-    def _show_menu(self, e):
-        try:
-            self.menu.tk_popup(e.x_root, e.y_root)
-        except Exception:
-            pass
-
-class TimeCapsulePage(tk.Frame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, bg=Theme.BG, **kwargs)
-        self._build_ui()
-        self._refresh_list()
-
-    def _build_ui(self):
-        tk.Label(self, text="⏳ 时光胶囊", font=Theme.FONT_HEADER,
-                 bg=Theme.BG, fg=Theme.TEXT).pack(pady=(10, 5))
-        tk.Label(self, text="写下文字 / 定时解锁", font=Theme.FONT_SMALL,
-                 bg=Theme.BG, fg=Theme.TEXT_SECONDARY).pack()
-
-        main_frame = tk.Frame(self, bg=Theme.BG)
-        main_frame.pack(fill='both', expand=True, padx=15, pady=5)
-
-        left_frame = tk.Frame(main_frame, bg=Theme.CARD)
-        left_frame.pack(side='left', fill='both', expand=True, padx=(0, 8))
-
-        tk.Label(left_frame, text="✍️ 写一封给未来的信", font=Theme.FONT_BODY_BOLD,
-                 bg=Theme.CARD, fg=Theme.TEXT).pack(anchor='w', padx=12, pady=(10, 5))
-
-        self.capsule_text = tk.Text(left_frame, font=Theme.FONT_BODY, height=10,
-                                     bd=0, highlightthickness=1,
-                                     highlightbackground=Theme.BORDER,
-                                     highlightcolor=Theme.PRIMARY, wrap='word')
-        self.capsule_text.pack(fill='both', expand=True, padx=12)
-
-        date_frame = tk.Frame(left_frame, bg=Theme.CARD)
-        date_frame.pack(fill='x', padx=12, pady=8)
-        tk.Label(date_frame, text="解锁日期:", font=Theme.FONT_BODY,
-                 bg=Theme.CARD, fg=Theme.TEXT_SECONDARY).pack(side='left', padx=(0, 5))
-        self.unlock_date_var = tk.StringVar()
-        tk.Entry(date_frame, textvariable=self.unlock_date_var, font=Theme.FONT_BODY,
-                  width=12, bd=0, highlightthickness=1,
-                  highlightbackground=Theme.BORDER,
-                  highlightcolor=Theme.PRIMARY).pack(side='left', padx=5)
-        tk.Label(date_frame, text="(格式: YYYY-MM-DD)", font=Theme.FONT_SMALL,
-                 bg=Theme.CARD, fg=Theme.TEXT_MUTED).pack(side='left', padx=5)
-
-        btn_frame = tk.Frame(left_frame, bg=Theme.CARD)
-        btn_frame.pack(pady=8)
-        RoundedButton(btn_frame, text="📦 封存胶囊", command=self._seal_capsule,
-                       bg=Theme.PRIMARY, width=92, height=22).pack(side='left', padx=5)
-        RoundedButton(btn_frame, text="清空", command=self._clear_text,
-                       bg=Theme.TEXT_MUTED, width=70, height=22).pack(side='left', padx=5)
-
-        self.capsule_status = tk.Label(left_frame, text="", font=Theme.FONT_SMALL,
-                                        bg=Theme.CARD, fg=Theme.SUCCESS)
-        self.capsule_status.pack(pady=3)
-
-        right_frame = tk.Frame(main_frame, bg=Theme.CARD)
-        right_frame.pack(side='right', fill='both', expand=True, padx=(8, 0))
-
-        tk.Label(right_frame, text="📋 我的胶囊", font=Theme.FONT_BODY_BOLD,
-                 bg=Theme.CARD, fg=Theme.TEXT).pack(anchor='w', padx=12, pady=(10, 5))
-
-        list_container = tk.Frame(right_frame, bg=Theme.CARD)
-        list_container.pack(fill='both', expand=True, padx=12)
-
-        self.capsule_canvas = tk.Canvas(list_container, bg=Theme.CARD,
-                                        bd=0, highlightthickness=0)
-        self.capsule_scrollbar = ttk.Scrollbar(list_container, orient='vertical',
-                                                command=self.capsule_canvas.yview)
-        self.capsule_inner = tk.Frame(self.capsule_canvas, bg=Theme.CARD)
-
-        self.capsule_inner.bind('<Configure>',
-                                  lambda e: self.capsule_canvas.configure(
-                                      scrollregion=self.capsule_canvas.bbox('all')))
-        self.capsule_canvas.create_window((0, 0), window=self.capsule_inner, anchor='nw')
-        self.capsule_canvas.configure(yscrollcommand=self.capsule_scrollbar.set)
-
-        self.capsule_canvas.pack(side='left', fill='both', expand=True)
-        self.capsule_scrollbar.pack(side='right', fill='y')
-
-    def _seal_capsule(self):
-        text = self.capsule_text.get('1.0', 'end-1c').strip()
-        if not text:
-            messagebox.showwarning("提示", "请写下胶囊内容！")
-            return
-        date_str = self.unlock_date_var.get().strip()
-        if not date_str:
-            messagebox.showwarning("提示", "请设置解锁日期！")
-            return
-        try:
-            datetime.datetime.strptime(date_str, '%Y-%m-%d')
-        except ValueError:
-            messagebox.showwarning("提示", "日期格式错误！请使用 YYYY-MM-DD")
-            return
-
-        try:
-            data = DataManager.load('capsules.json', {})
-            capsules = data.get('capsules', [])
-            capsule = {
-                'text': text,
-                'unlock_date': date_str,
-                'seal_date': datetime.date.today().strftime('%Y-%m-%d'),
-                'unlocked': False
-            }
-            capsules.append(capsule)
-            data['capsules'] = capsules
-            DataManager.save('capsules.json', data)
-            self.capsule_status.config(text="✅ 胶囊已封存！", fg=Theme.SUCCESS)
-            AnimationEngine.glow_label(self.capsule_status, Theme.SUCCESS)
-            self._clear_text()
-            self._refresh_list()
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _clear_text(self):
-        self.capsule_text.delete('1.0', 'end')
-        self.unlock_date_var.set('')
-
-    def _load_capsules(self):
-        data = DataManager.load('capsules.json', {})
-        return data.get('capsules', [])
-
-    def _refresh_list(self):
-        for w in self.capsule_inner.winfo_children():
-            w.destroy()
-        capsules = self._load_capsules()
-        if not capsules:
-            tk.Label(self.capsule_inner, text="暂无胶囊，写下你的第一个时光胶囊吧 ✨",
-                     font=Theme.FONT_BODY, bg=Theme.CARD,
-                     fg=Theme.TEXT_MUTED).pack(pady=20)
-            return
-
-        today = datetime.date.today()
-        for i, cap in enumerate(reversed(capsules)):
-            unlock_date = cap.get('unlock_date', '')
-            unlocked = cap.get('unlocked', False)
-            try:
-                ud = datetime.datetime.strptime(unlock_date, '%Y-%m-%d').date()
-                if not unlocked and ud <= today:
-                    cap['unlocked'] = True
-                    unlocked = True
-                    data = DataManager.load('capsules.json', {})
-                    caps = data.get('capsules', [])
-                    idx = len(caps) - 1 - i
-                    if 0 <= idx < len(caps):
-                        caps[idx]['unlocked'] = True
-                        data['capsules'] = caps
-                        DataManager.save('capsules.json', data)
-            except Exception:
-                pass
-
-            cap_frame = tk.Frame(self.capsule_inner, bg=Theme.CARD)
-            cap_frame.pack(fill='x', pady=5, padx=5)
-
-            header = tk.Frame(cap_frame, bg=Theme.CARD)
-            header.pack(fill='x', padx=10, pady=8)
-
-            status_text = "🔓 已解锁" if unlocked else "🔒 已封存"
-            status_color = Theme.SUCCESS if unlocked else Theme.WARNING
-            tk.Label(header, text=status_text, font=Theme.FONT_BODY_BOLD,
-                     bg=Theme.CARD, fg=status_color).pack(side='left')
-
-            tk.Label(header, text=f"解锁日期: {unlock_date}", font=Theme.FONT_SMALL,
-                     bg=Theme.CARD, fg=Theme.TEXT_SECONDARY).pack(side='right')
-
-            tk.Label(header, text=f"封存于 {cap.get('seal_date', '')}",
-                     font=Theme.FONT_SMALL, bg=Theme.CARD,
-                     fg=Theme.TEXT_MUTED).pack(side='right', padx=10)
-
-            if unlocked:
-                content_frame = tk.Frame(cap_frame, bg='#F3E5F5')
-                content_frame.pack(fill='x', padx=10, pady=(0, 8))
-                tk.Label(content_frame, text=cap.get('text', ''),
-                         font=Theme.FONT_BODY, bg='#F3E5F5', fg=Theme.TEXT,
-                         wraplength=250, justify='left',
-                         anchor='w').pack(padx=10, pady=8, anchor='w')
-            else:
-                tk.Label(cap_frame, text="🔒 内容将在解锁日期后可见...",
-                         font=Theme.FONT_SMALL, bg=Theme.CARD,
-                         fg=Theme.TEXT_MUTED).pack(pady=(0, 8))
-
-            del_btn = tk.Label(cap_frame, text="🗑️ 删除", font=Theme.FONT_SMALL,
-                                bg=Theme.CARD, fg=Theme.DANGER, cursor='hand2')
-            del_btn.pack(anchor='e', padx=10, pady=(0, 5))
-            del_btn.bind('<Button-1>', lambda e, idx=len(capsules)-1-i: self._delete_capsule(idx))
-
-    def _delete_capsule(self, idx):
-        if not messagebox.askyesno("确认", "确定要删除这个胶囊吗？"):
-            return
-        try:
-            data = DataManager.load('capsules.json', {})
-            capsules = data.get('capsules', [])
-            if 0 <= idx < len(capsules):
-                del capsules[idx]
-                data['capsules'] = capsules
-                DataManager.save('capsules.json', data)
-                self._refresh_list()
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-
-
-class NotePage(tk.Frame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, bg=Theme.BG, **kwargs)
-        self.active_notes = {}
-        self._build_ui()
-
-    def _build_ui(self):
-        tk.Label(self, text="📝 桌面便签", font=Theme.FONT_HEADER,
-                 bg=Theme.BG, fg=Theme.TEXT).pack(pady=(10, 5))
-        tk.Label(self, text="置顶窗口 · 自由拖动 · 自动保存",
-                 font=Theme.FONT_SMALL, bg=Theme.BG,
-                 fg=Theme.TEXT_SECONDARY).pack()
-        bf = tk.Frame(self, bg=Theme.BG)
-        bf.pack(pady=12)
-        RoundedButton(bf, text="＋ 新建便签", command=self.add_note,
-                       bg=Theme.WARNING, fg='#333',
-                       width=84, height=24).pack(side='left', padx=6)
-        RoundedButton(bf, text="打开所有便签", command=self.open_all,
-                       bg=Theme.PRIMARY, width=92, height=24).pack(side='left', padx=6)
-        RoundedButton(bf, text="清除所有数据", command=self.clear_all,
-                       bg=Theme.DANGER, width=92, height=24).pack(side='left', padx=6)
-        info = tk.Frame(self, bg=Theme.CARD)
-        info.pack(fill='both', expand=True, padx=15, pady=8)
-        tk.Label(info, text="💡 使用说明", font=Theme.FONT_BODY_BOLD,
-                 bg=Theme.CARD, fg=Theme.TEXT).pack(anchor='w', padx=15, pady=(10, 5))
-        for tip in [
-            "• 便签窗口始终置顶，可自由拖动",
-            "• 内容修改后自动保存（延迟 500ms）",
-            "• 点击 🎨 更换便签颜色",
-            "• 右键文本区：置顶 / 新建 / 关闭",
-            "• 点击 ✕ 关闭当前便签",
-        ]:
-            tk.Label(info, text=tip, font=Theme.FONT_BODY,
-                     bg=Theme.CARD, fg=Theme.TEXT_SECONDARY,
-                     anchor='w').pack(anchor='w', padx=25, pady=2)
-
-    def add_note(self):
-        try:
-            data = DataManager.load('notes.json', {})
-            notes = data.get('notes', [])
-            closed = [i for i, n in enumerate(notes) if n.get('closed', False)]
-            if closed:
-                nid = closed[0]
-                notes[nid] = {'text': '', 'geometry': '180x150+100+100',
-                              'color': '#FFF9C4', 'closed': False, 'name': ''}
-            else:
-                nid = len(notes)
-                notes.append({'text': '', 'geometry': '180x150+100+100',
-                              'color': '#FFF9C4', 'closed': False, 'name': ''})
-            data['notes'] = notes
-            DataManager.save('notes.json', data)
-            nd = notes[nid]
-            note = StickyNoteWindow(self.winfo_toplevel(), note_id=nid,
-                                     text=nd.get('text', ''),
-                                     color=nd.get('color', '#FFF9C4'),
-                                     name=nd.get('name', ''))
-            self.active_notes[nid] = note
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def open_all(self):
-        try:
-            data = DataManager.load('notes.json', {})
-            for i, nd in enumerate(data.get('notes', [])):
-                if not nd.get('closed', False) and i not in self.active_notes:
-                    note = StickyNoteWindow(self.winfo_toplevel(), note_id=i,
-                                             text=nd.get('text', ''),
-                                             color=nd.get('color', '#FFF9C4'),
-                                             name=nd.get('name', ''))
-                    self.active_notes[i] = note
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def clear_all(self):
-        if not messagebox.askyesno("确认", "确定要清除所有便签数据吗？"):
-            return
-        try:
-            for n in self.active_notes.values():
-                try:
-                    n.destroy()
-                except Exception:
-                    pass
-            self.active_notes.clear()
-            DataManager.save('notes.json', {'notes': []})
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-
-class TimerPage(tk.Frame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, bg=Theme.BG, **kwargs)
-        self._build_ui()
-
-    def _build_ui(self):
-        tk.Label(self, text="⏱️ 计时工具", font=Theme.FONT_HEADER,
-                 bg=Theme.BG, fg=Theme.TEXT).pack(pady=(10, 5))
-        nb = ttk.Notebook(self)
-        nb.pack(fill='both', expand=True, padx=15, pady=5)
-        t1 = tk.Frame(nb, bg=Theme.CARD)
-        nb.add(t1, text='  番茄钟  ')
-        self._build_pomodoro(t1)
-        t2 = tk.Frame(nb, bg=Theme.CARD)
-        nb.add(t2, text='  自定义倒计时  ')
-        self._build_countdown(t2)
-
-    def _build_pomodoro(self, parent):
-        self.pomo_seconds = 25 * 60
-        self.pomo_remaining = self.pomo_seconds
-        self.pomo_running = False
-        self.pomo_mode = 'work'
-        self.pomo_round = 0
-        tk.Label(parent, text="🍅 番茄工作法", font=Theme.FONT_BODY_BOLD,
-                 bg=Theme.CARD, fg=Theme.TEXT).pack(pady=(12, 3))
-        self.pomo_mode_label = tk.Label(parent, text="工作时间", font=Theme.FONT_BODY,
-                                        bg=Theme.CARD, fg=Theme.DANGER)
-        self.pomo_mode_label.pack()
-        self.pomo_display = tk.Label(parent, text="25:00", font=Theme.FONT_NUM,
-                                      bg=Theme.CARD, fg=Theme.DANGER)
-        self.pomo_display.pack(pady=10)
-        self.pomo_progress = ttk.Progressbar(parent, length=280, maximum=100)
-        self.pomo_progress.pack(pady=3)
-        self.pomo_round_label = tk.Label(parent, text="第 0 轮", font=Theme.FONT_SMALL,
-                                          bg=Theme.CARD, fg=Theme.TEXT_MUTED)
-        self.pomo_round_label.pack()
-        bf = tk.Frame(parent, bg=Theme.CARD)
-        bf.pack(pady=10)
-        self.pomo_start_btn = RoundedButton(bf, text="开始", command=self._pomo_toggle,
-                                              bg=Theme.SUCCESS, width=76, height=26)
-        self.pomo_start_btn.pack(side='left', padx=4)
-        RoundedButton(bf, text="重置", command=self._pomo_reset,
-                       bg=Theme.TEXT_MUTED, width=70, height=26).pack(side='left', padx=4)
-        RoundedButton(bf, text="跳过", command=self._pomo_skip,
-                       bg=Theme.WARNING, fg='#333',
-                       width=70, height=26).pack(side='left', padx=4)
-        sf = tk.LabelFrame(parent, text="时间设置(分钟)", font=Theme.FONT_SMALL,
-                            bg=Theme.CARD, fg=Theme.TEXT_SECONDARY, padx=10, pady=5,
-                            bd=0, relief='flat')
-        sf.pack(pady=8)
-        row = tk.Frame(sf, bg=Theme.CARD)
-        row.pack()
-        for i, (lbl, key, default) in enumerate([
-            ('工作', 'work', 25), ('短休', 'short', 5),
-            ('长休', 'long', 15), ('长休间隔', 'interval', 4)]):
-            tk.Label(row, text=lbl, font=Theme.FONT_SMALL,
-                     bg=Theme.CARD).grid(row=0, column=i*2, padx=2, pady=2)
-            var = tk.StringVar()
-            tk.Entry(row, textvariable=var, width=4, font=Theme.FONT_SMALL,
-                       justify='center', bd=0, highlightthickness=1,
-                       highlightbackground=Theme.BORDER,
-                       highlightcolor=Theme.PRIMARY).grid(row=0, column=i*2+1, padx=2, pady=2)
-            setattr(self, f'pomo_{key}_var', var)
-            var.set(str(default))
-        RoundedButton(sf, text="应用设置", command=self._pomo_apply,
-                       bg=Theme.PRIMARY, width=84, height=22).pack(pady=5)
-
-    def _pomo_apply(self):
-        try:
-            data = DataManager.load('timer.json', {})
-            data['pomodoro'] = {
-                'work': int(self.pomo_work_var.get()) * 60,
-                'short': int(self.pomo_short_var.get()) * 60,
-                'long': int(self.pomo_long_var.get()) * 60,
-                'interval': int(self.pomo_interval_var.get())}
-            DataManager.save('timer.json', data)
-            self.pomo_mode_label.config(text="✅ 设置已应用", fg=Theme.SUCCESS)
-            AnimationEngine.glow_label(self.pomo_mode_label, Theme.SUCCESS)
-        except ValueError:
-            messagebox.showwarning("提示", "请输入有效数字！")
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _pomo_toggle(self):
-        if self.pomo_running:
-            self.pomo_running = False
-            self.pomo_start_btn._text = "开始"
-            self.pomo_start_btn._draw(Theme.SUCCESS)
-        else:
-            self.pomo_running = True
-            self.pomo_start_btn._text = "暂停"
-            self.pomo_start_btn._draw(Theme.WARNING)
-            self._pomo_tick()
-
-    def _pomo_tick(self):
-        if not self.pomo_running:
-            return
-        try:
-            self.pomo_remaining -= 1
-            m, s = divmod(max(0, self.pomo_remaining), 60)
-            text = f"{m:02d}:{s:02d}"
-            cur = self.pomo_display.cget('text')
-            if cur != text:
-                AnimationEngine.roll_number(self.pomo_display, cur, text, duration=180)
-            self.pomo_display.config(text=text)
-            w = int(self.pomo_work_var.get()) * 60
-            sh = int(self.pomo_short_var.get()) * 60
-            lo = int(self.pomo_long_var.get()) * 60
-            t = {'work': w, 'short': sh, 'long': lo}.get(self.pomo_mode, w)
-            self.pomo_progress['value'] = ((t - self.pomo_remaining) / t) * 100 if t > 0 else 0
-            if self.pomo_remaining <= 0:
-                self._pomo_finish()
-                return
-            self.after(1000, self._pomo_tick)
-        except Exception:
-            self.pomo_running = False
-
-    def _pomo_finish(self):
-        self.pomo_running = False
-        self.pomo_start_btn._text = "开始"
-        self.pomo_start_btn._draw(Theme.SUCCESS)
-        if self.pomo_mode == 'work':
-            self.pomo_round += 1
-            self.pomo_round_label.config(text=f"第 {self.pomo_round} 轮")
-            interval = int(self.pomo_interval_var.get())
-            if self.pomo_round % interval == 0:
-                self.pomo_mode = 'long'
-                self.pomo_seconds = int(self.pomo_long_var.get()) * 60
-                self.pomo_mode_label.config(text="长休息", fg='#1565C0')
-                self._show_popup("🍅 工作完成！",
-                                  f"进入长休息\n({int(self.pomo_long_var.get())}分钟)")
-            else:
-                self.pomo_mode = 'short'
-                self.pomo_seconds = int(self.pomo_short_var.get()) * 60
-                self.pomo_mode_label.config(text="短休息", fg='#2E7D32')
-                self._show_popup("🍅 工作完成！",
-                                  f"进入短休息\n({int(self.pomo_short_var.get())}分钟)")
-        else:
-            self.pomo_mode = 'work'
-            self.pomo_seconds = int(self.pomo_work_var.get()) * 60
-            self.pomo_mode_label.config(text="工作时间", fg=Theme.DANGER)
-            self._show_popup("⏰ 休息结束！", "开始工作吧 💪")
-        self.pomo_remaining = self.pomo_seconds
-        m, s = divmod(self.pomo_remaining, 60)
-        self.pomo_display.config(text=f"{m:02d}:{s:02d}")
-
-    def _pomo_reset(self):
-        self.pomo_running = False
-        self.pomo_start_btn._text = "开始"
-        self.pomo_start_btn._draw(Theme.SUCCESS)
-        self.pomo_mode = 'work'
-        self.pomo_seconds = int(self.pomo_work_var.get()) * 60
-        self.pomo_remaining = self.pomo_seconds
-        self.pomo_mode_label.config(text="工作时间", fg=Theme.DANGER)
-        self.pomo_round = 0
-        self.pomo_round_label.config(text="第 0 轮")
-        m, s = divmod(self.pomo_remaining, 60)
-        self.pomo_display.config(text=f"{m:02d}:{s:02d}")
-        self.pomo_progress['value'] = 0
-
-    def _pomo_skip(self):
-        if self.pomo_running:
-            self.pomo_remaining = 1
-            self._pomo_tick()
-        else:
-            self._pomo_finish()
-
-    def _build_countdown(self, parent):
-        self.cd_seconds = 0
-        self.cd_remaining = 0
-        self.cd_running = False
-        tk.Label(parent, text="⏳ 自定义倒计时", font=Theme.FONT_BODY_BOLD,
-                 bg=Theme.CARD, fg=Theme.TEXT).pack(pady=(12, 3))
-        tf = tk.Frame(parent, bg=Theme.CARD)
-        tf.pack(pady=8)
-        for lbl, key, default in [("时:", 'h', 0), ("分:", 'm', 10), ("秒:", 's', 0)]:
-            tk.Label(tf, text=lbl, font=Theme.FONT_BODY, bg=Theme.CARD).pack(side='left', padx=2)
-            var = tk.StringVar(value=str(default))
-            setattr(self, f'cd_{key}_var', var)
-            tk.Entry(tf, textvariable=var, width=5, font=('Consolas', 14, 'bold'),
-                       justify='center', bd=0, highlightthickness=1,
-                       highlightbackground=Theme.BORDER,
-                       highlightcolor=Theme.PRIMARY).pack(side='left', padx=2)
-        self.cd_display = tk.Label(parent, text="00:10:00", font=Theme.FONT_NUM,
-                                    bg=Theme.CARD, fg=Theme.PRIMARY)
-        self.cd_display.pack(pady=8)
-        pf = tk.Frame(parent, bg=Theme.CARD)
-        pf.pack(pady=3)
-        tk.Label(pf, text="快速设置:", font=Theme.FONT_SMALL, bg=Theme.CARD,
-                 fg=Theme.TEXT_SECONDARY).pack(side='left', padx=5)
-        for lbl, h, m, s in [("5分钟",0,5,0),("10分钟",0,10,0),("30分钟",0,30,0),("1小时",1,0,0)]:
-            RoundedButton(pf, text=lbl, command=lambda h=h, m=m, s=s: self._cd_preset(h,m,s),
-                            bg='#E3F2FD', fg='#1565C0',
-                            width=72, height=26, radius=5).pack(side='left', padx=3)
-        bf = tk.Frame(parent, bg=Theme.CARD)
-        bf.pack(pady=10)
-        self.cd_start_btn = RoundedButton(bf, text="开始倒计时", command=self._cd_toggle,
-                                             bg=Theme.SUCCESS, width=84, height=26)
-        self.cd_start_btn.pack(side='left', padx=5)
-        RoundedButton(bf, text="重置", command=self._cd_reset,
-                       bg=Theme.TEXT_MUTED, width=70, height=26).pack(side='left', padx=5)
-
-    def _cd_preset(self, h, m, s):
-        self.cd_h_var.set(str(h))
-        self.cd_m_var.set(str(m))
-        self.cd_s_var.set(str(s))
-        self._cd_reset()
-
-    def _cd_toggle(self):
-        if self.cd_running:
-            self.cd_running = False
-            self.cd_start_btn._text = "继续"
-            self.cd_start_btn._draw(Theme.SUCCESS)
-        else:
-            if self.cd_remaining == 0:
-                try:
-                    self.cd_seconds = int(self.cd_h_var.get()) * 3600 + \
-                                      int(self.cd_m_var.get()) * 60 + int(self.cd_s_var.get())
-                    if self.cd_seconds <= 0:
-                        messagebox.showwarning("提示", "请设置大于0的时间！")
-                        return
-                    self.cd_remaining = self.cd_seconds
-                except ValueError:
-                    messagebox.showwarning("提示", "请输入有效数字！")
-                    return
-            self.cd_running = True
-            self.cd_start_btn._text = "暂停"
-            self.cd_start_btn._draw(Theme.WARNING)
-            self._cd_tick()
-
-    def _cd_tick(self):
-        if not self.cd_running:
-            return
-        try:
-            self.cd_remaining -= 1
-            t = max(0, self.cd_remaining)
-            h, rem = divmod(t, 3600)
-            m, s = divmod(rem, 60)
-            text = f"{h:02d}:{m:02d}:{s:02d}"
-            cur = self.cd_display.cget('text')
-            if cur != text:
-                AnimationEngine.roll_number(self.cd_display, cur, text, duration=200)
-            self.cd_display.config(text=text)
-            if self.cd_remaining <= 0:
-                self._cd_finish()
-                return
-            self.after(1000, self._cd_tick)
-        except Exception:
-            self.cd_running = False
-
-    def _cd_finish(self):
-        self.cd_running = False
-        self.cd_start_btn._text = "开始倒计时"
-        self.cd_start_btn._draw(Theme.SUCCESS)
-        self.cd_display.config(text="时间到!", fg=Theme.DANGER)
-        AnimationEngine.glow_label(self.cd_display, Theme.DANGER)
-        self._show_popup("⏰ 时间到！", "倒计时结束")
-
-    def _cd_reset(self):
-        self.cd_running = False
-        self.cd_start_btn._text = "开始倒计时"
-        self.cd_start_btn._draw(Theme.SUCCESS)
-        try:
-            self.cd_seconds = int(self.cd_h_var.get()) * 3600 + \
-                              int(self.cd_m_var.get()) * 60 + int(self.cd_s_var.get())
-            self.cd_remaining = self.cd_seconds
-            t = max(0, self.cd_remaining)
-            h, rem = divmod(t, 3600)
-            m, s = divmod(rem, 60)
-            self.cd_display.config(text=f"{h:02d}:{m:02d}:{s:02d}", fg=Theme.PRIMARY)
-        except ValueError:
-            self.cd_remaining = 0
-            self.cd_display.config(text="00:00:00", fg=Theme.PRIMARY)
-
-    def _show_popup(self, title, msg):
-        try:
-            popup = tk.Toplevel(self)
-            popup.title(title)
-            popup.geometry("260x150")
-            popup.configure(bg='#FFEBEE')
-            popup.attributes('-topmost', True)
-            popup.transient(self.winfo_toplevel())
-            popup.grab_set()
-            tk.Label(popup, text="⏰", font=('Segoe UI Emoji', 40),
-                     bg='#FFEBEE').pack(pady=(12, 0))
-            tk.Label(popup, text=title, font=('Microsoft YaHei', 14, 'bold'),
-                     bg='#FFEBEE', fg='#C62828').pack(pady=5)
-            tk.Label(popup, text=msg, font=Theme.FONT_BODY,
-                     bg='#FFEBEE', fg=Theme.TEXT_SECONDARY).pack()
-            RoundedButton(popup, text="知道了", command=popup.destroy,
-                           bg=Theme.SUCCESS, width=84, height=26).pack(pady=10)
-            popup.update_idletasks()
-            AnimationEngine.animate_popup(popup, duration=280)
-            try:
-                popup.bell()
-            except Exception:
-                pass
-        except Exception:
-            messagebox.showinfo("⏰", title)
-
-
-class AnniversaryPage(tk.Frame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, bg=Theme.BG, **kwargs)
-        self.items = []
-        self._build_ui()
-        self._load()
-
-    def _build_ui(self):
-        tk.Label(self, text="📅 纪念日管理", font=Theme.FONT_HEADER,
-                 bg=Theme.BG, fg=Theme.TEXT).pack(pady=(10, 5))
-        af = tk.Frame(self, bg=Theme.CARD)
-        af.pack(fill='x', padx=15, pady=5)
-        for i, (lbl, key) in enumerate([
-            ('名称', 'name'), ('日期(YYYY-MM-DD)', 'date'), ('类型', 'type')]):
-            tk.Label(af, text=lbl, font=Theme.FONT_BODY, bg=Theme.CARD,
-                     fg=Theme.TEXT_SECONDARY).grid(row=0, column=i*2, padx=5, pady=8, sticky='e')
-        self.name_var = tk.StringVar()
-        tk.Entry(af, textvariable=self.name_var, width=12,
-                   font=Theme.FONT_BODY, bd=0, highlightthickness=1,
-                   highlightbackground=Theme.BORDER,
-                   highlightcolor=Theme.PRIMARY).grid(row=0, column=1, padx=3, pady=8)
-        self.date_var = tk.StringVar()
-        tk.Entry(af, textvariable=self.date_var, width=12,
-                   font=Theme.FONT_BODY, bd=0, highlightthickness=1,
-                   highlightbackground=Theme.BORDER,
-                   highlightcolor=Theme.PRIMARY).grid(row=0, column=3, padx=3, pady=8)
-        self.type_var = tk.StringVar(value='每年重复')
-        ttk.Combobox(af, textvariable=self.type_var,
-                       values=['每年重复', '仅一次', '每周重复'],
-                       width=10, state='readonly',
-                       font=Theme.FONT_BODY).grid(row=0, column=5, padx=3, pady=8)
-        RoundedButton(af, text="＋ 添加", command=self._add,
-                       bg=Theme.PRIMARY, width=76, height=24).grid(row=0, column=6, padx=10, pady=8)
-        st = ttk.Style()
-        st.configure('Anniv.Treeview', background=Theme.CARD, foreground=Theme.TEXT,
-                      fieldbackground=Theme.CARD, font=Theme.FONT_BODY, rowheight=22)
-        st.configure('Anniv.Treeview.Heading', font=Theme.FONT_BODY_BOLD,
-                      background=Theme.PRIMARY, foreground='white')
-        lf = tk.Frame(self, bg=Theme.BG)
-        lf.pack(fill='both', expand=True, padx=15, pady=5)
-        cols = ('name', 'date', 'type', 'days')
-        self.tree = ttk.Treeview(lf, columns=cols, show='headings',
-                                  height=10, style='Anniv.Treeview')
-        for col, txt, w in [('name','名称',140),('date','日期',110),
-                             ('type','类型',90),('days','剩余/已过',140)]:
-            self.tree.heading(col, text=txt)
-            self.tree.column(col, width=w, anchor='center' if col != 'name' else 'w')
-        vsb = ttk.Scrollbar(lf, orient='vertical', command=self.tree.yview)
-        self.tree.configure(yscrollcommand=vsb.set)
-        self.tree.pack(side='left', fill='both', expand=True)
-        vsb.pack(side='right', fill='y')
-        self.tree.bind('<Double-1>', self._on_double)
-        bf = tk.Frame(self, bg=Theme.BG)
-        bf.pack(fill='x', padx=15, pady=3)
-        RoundedButton(bf, text="🗑️ 删除选中", command=self._delete,
-                       bg=Theme.DANGER, width=92, height=24).pack(side='left', padx=5)
-        RoundedButton(bf, text="🔄 刷新", command=self._refresh,
-                       bg=Theme.PRIMARY, width=70, height=24).pack(side='left', padx=5)
-        self.stats = tk.Label(self, text="", font=Theme.FONT_SMALL,
-                               bg=Theme.BG, fg=Theme.TEXT_SECONDARY)
-        self.stats.pack(pady=3)
-
-    def _load(self):
-        try:
-            self.items = DataManager.load('anniversaries.json', {}).get('items', [])
-            self._refresh()
-        except Exception:
-            self.items = []
-
-    def _add(self):
-        try:
-            name = self.name_var.get().strip()
-            date_str = self.date_var.get().strip()
-            a_type = self.type_var.get()
-            if not name:
-                messagebox.showwarning("提示", "请输入名称！")
-                return
-            if not date_str:
-                messagebox.showwarning("提示", "请输入日期！")
-                return
-            datetime.datetime.strptime(date_str, '%Y-%m-%d')
-            self.items.append({'name': name, 'date': date_str, 'type': a_type})
-            DataManager.save('anniversaries.json', {'items': self.items})
-            self.name_var.set('')
-            self.date_var.set('')
-            self._refresh()
-        except ValueError:
-            messagebox.showerror("错误", "日期格式错误！请使用 YYYY-MM-DD")
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _days_text(self, item):
-        try:
-            today = datetime.date.today()
-            date = datetime.datetime.strptime(item['date'], '%Y-%m-%d').date()
-            t = item.get('type', '每年重复')
-            if t == '仅一次':
-                d = (date - today).days
-                return f"还有 {d} 天" if d >= 0 else f"已过 {-d} 天"
-            elif t == '每周重复':
-                d = (date - today).days % 7
-                return "就在今天!" if d == 0 else f"还有 {d} 天"
-            else:
-                nd = date.replace(year=today.year)
-                if nd < today:
-                    nd = date.replace(year=today.year + 1)
-                d = (nd - today).days
-                return "就在今天! 🎉" if d == 0 else f"还有 {d} 天"
-        except Exception:
-            return "计算错误"
-
-    def _sort_key(self, item):
-        try:
-            today = datetime.date.today()
-            date = datetime.datetime.strptime(item['date'], '%Y-%m-%d').date()
-            t = item.get('type', '每年重复')
-            if t == '仅一次':
-                return abs((date - today).days)
-            elif t == '每周重复':
-                return (date - today).days % 7
-            else:
-                nd = date.replace(year=today.year)
-                if nd < today:
-                    nd = date.replace(year=today.year + 1)
-                return (nd - today).days
-        except Exception:
-            return 999999
-
-    def _refresh(self):
-        try:
-            for i in self.tree.get_children():
-                self.tree.delete(i)
-            for item in sorted(self.items, key=self._sort_key):
-                self.tree.insert('', 'end', values=(
-                    item['name'], item['date'], item.get('type', '每年重复'),
-                    self._days_text(item)))
-            self.stats.config(
-                text=f"共 {len(self.items)} 个纪念日  |  "
-                     f"今日: {datetime.date.today().strftime('%Y-%m-%d')}")
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _delete(self):
-        sel = self.tree.selection()
-        if not sel:
-            messagebox.showwarning("提示", "请先选择要删除的项！")
-            return
-        if not messagebox.askyesno("确认", f"确定要删除 {len(sel)} 个纪念日吗？"):
-            return
-        try:
-            to_del = []
-            for s in sel:
-                v = self.tree.item(s, 'values')
-                for i, item in enumerate(self.items):
-                    if item['name'] == v[0] and item['date'] == v[1]:
-                        to_del.append(i)
-                        break
-            for i in sorted(to_del, reverse=True):
-                del self.items[i]
-            DataManager.save('anniversaries.json', {'items': self.items})
-            self._refresh()
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    def _on_double(self, event):
-        sel = self.tree.selection()
-        if not sel:
-            return
-        v = self.tree.item(sel[0], 'values')
-        d = self._days_text({'name': v[0], 'date': v[1], 'type': v[2]})
-        try:
-            popup = tk.Toplevel(self)
-            popup.title("纪念日详情")
-            popup.geometry("260x140")
-            popup.configure(bg='#E8EAF6')
-            popup.transient(self.winfo_toplevel())
-            popup.grab_set()
-            tk.Label(popup, text="📅", font=('Segoe UI Emoji', 36),
-                     bg='#E8EAF6').pack(pady=(12, 0))
-            tk.Label(popup, text=v[0], font=('Microsoft YaHei', 14, 'bold'),
-                     bg='#E8EAF6', fg=Theme.PRIMARY).pack(pady=3)
-            tk.Label(popup, text=f"日期: {v[1]}  |  类型: {v[2]}",
-                     font=Theme.FONT_SMALL, bg='#E8EAF6',
-                     fg=Theme.TEXT_SECONDARY).pack()
-            tk.Label(popup, text=d, font=('Microsoft YaHei', 12, 'bold'),
-                     bg='#E8EAF6', fg=Theme.ACCENT).pack(pady=5)
-            RoundedButton(popup, text="关闭", command=popup.destroy,
-                           bg=Theme.PRIMARY, width=76, height=22).pack(pady=5)
-            popup.update_idletasks()
-            AnimationEngine.animate_popup(popup, duration=280)
-        except Exception:
-            pass
-
-
-class YanbaApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("闫巴工具箱 YBv1.1")
-        self.geometry("480x560")
-        self.minsize(440, 500)
-        DataManager.init_app_dir()
-        self._set_window_icon()
-        self._theme = DataManager.load('settings.json', {}).get('theme', 'light')
-        if self._theme == 'dark':
-            Theme.set_dark()
-        self.configure(bg=Theme.BG)
-        self._configure_notebook_style()
-        self.current_page = None
-        self.pages = {}
-        self._nav_bar = None
-        self._theme_btn = None
-        self._home_theme_widgets = []
-        self._build_home()
-        self._show_page('home')
-        self._add_theme_btn_home()
-        self.after(2000, self._check_capsules)
-
-
-    def _set_window_icon(self):
-        try:
-            if getattr(sys, 'frozen', False):
-                base = os.path.dirname(sys.executable)
-            else:
-                base = os.path.dirname(os.path.abspath(__file__))
-            icon_path = os.path.join(base, 'icon.ico')
-            if os.path.exists(icon_path):
-                self.iconbitmap(icon_path)
-                return
-        except Exception:
-            pass
-        try:
-            import base64 as _b64
-            _ICON_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAOxElEQVR4nKVae3AUx5mf7p7H7s5KWmlZSYdeETZOzg5Q2OFxCSKpohRZudgXk3NiqEKBxA7hnDsfikhy5Ys4OxBfVThzFwKmymflsPGdsU2BEzD24ZztpBInR6oI5bNsMOJpIUu7K9idfc2r+2q2paHVM7Nak/5rdrb76+/7+vt+36MHGHpRlBSh4gAAEEK4l943vv8CAGadw86ke4Hy4ObQZ5agM5OUh/ARB11Cd2KJuu/dmRwf3ExuUL7pXxBCbo4rAPuen+QdrjI4QpzOKlAI4rXyvpVpUq4AAGJlKi4tV9lBtuS+91Wbl+Nqjp14NOUjCca4Ghmq37h6ffvKxpn4rBSqOgGOFc6xXLe7AV9yR9DxVpZcEISPLICvDFWaRGXmyLSVeicEuT4AAFbYIIinKnmlnuOKx/4Mokk+4o6EEH8BfHe6YQvx9e8qeSUzVVCVE7P7QThDQowxZ+5V8sEGJvYBVGEzbljwpR+IQnQlt4xd7HXlCgKwbLGTARO5/FESANu2McaiKPpSDnTiagJcBRz0BuAKyQWYLaj5YhSlGejEQUQrYLO7jddfvdz7Zjs3EFj+pDgQBNt0jmVZrITUBrzGVs3wzYLozxsxIW/MYnmiji5JkizL7BzTNB3YLg8uNyE3KlW1uVAFSbwvqaYNwzh06BDFANu24/F4d3c3faaw4Qs4oGoxKMA4zn0DTHsTB9u2RVGk2z/55JMnT55MJpPHX/slIWX+CK6rq+3t7V20aNGmTZvo9pZlIYQ4FPJFM85+uLSSh1H+74oqcSkihDDGzzzzzNDQ0Pj4hKbllJDS2trmKlsvlUZHR2VZ6uho37p168qVKxFCpmlSGSqrzLIsQogsyxwwTAnMCsAyTd9DCCtnaVT3L7zw4muvHT90+KVEIhGJRBQljLFtGAalKggEAChLsmmY17KZdCp5x+23Dw7+YEVXV1B+zhqYaZoYY+pR7IFMCWDbtq8zuQLwEnugM51O33rrrYZpLViwUNd1G9uE2M5fAhQAAQ5lQRAQIRhCSFWuZbOpVPL73//exo0bJUmiamKVyAKaKwAXQOkE6Ivcbr3DaoVbb9t2sVg8fPjwyq6V8Xj8tts+mc/nHegUBAQRIAIhDhyVZztSuNhqmEZNbW1bW3t//8DQ0JAoirbtCOw9B0533vdTgcw9FFfflF3XuryB1rIsURT379//la98VVaU2ro6XS+JoijLkmEYxULRgVFJhgAJGABHgBm8GXqp7A8dgz8YPHbsmCRJvhlNNQkl9CJaUK7P6WBsbOzkyT/OmZOoqakpL8Op5PhkOn3u7LmzZ0eSydT4+Lht2VPMseosm6FuGInGxo7OeWvXrj1+/DhCKCgFZlXp1abjA+wfGGNqPDQe8eKWjdU0TVmW9+7d++CDf9vV1VUsFq5cGc3l8lo2R4igKAqEsKSXsG1Ha9SGhnhzczN2yFEmwJQw5e0kSdKy2XA4dPTokUQiwQK0axeWZdFkzhevpmyGxWMqMR30mdUBxhghsVgs/va3b7W1tRhGaWRkZOzKeKFQUkKRUDgMoGP94VAkEonqJXP0g9FLly7Zto0gQLRT4tiU4xU03sVisdHR0a2DW6nWhCqGf0npSu+bjbG5l21b27dvP3Lk6MKFC957793JyUwoJAMAy+BTtg8g2Nh0qEsiITCdTmcyWlPjHDWqRqM1pmVNU7WdQFT27LGxsWLR8Zyg0owFlRnBm025WE1PawqwxlNWP3p3eHjFipWfXLDgzPtnPhz7MBJRMS7jpjOgQAApc0bKNgMhtCwMIbBtBwoTjfFYrB6hMllS3gVC27KGh995+eWjq1atotGNrWNoIJMkyfc0rqOQK8D0z+vxgotlalRFojg2NqbIckNDA6MCoJcMa0rBzlFgjPWSWaeqgkAUWbItfOH8uUJekySRTAdpgrGqqqIohkIhlw22XvPF9BkCeGOws34m9lFuqNP//vf/qyiKYRiKooiiE18AEBBCxWLhvi/2LF10m2EYNDJhjLtXLF1/V3epVMjlcxAJkqRcunQ5m9XKSsFEwAJwQDkajZ448Qdd17nSJ6j55/68HgJdU0EIQYTKwYf3BwhhPp/fvPk7c+YkWltbkxPpyfSkJIqYkHy+EI/FfvqTbYnmRtt2zMCy7UhI3fiNtT9++j9XLv/0tzasKxQ0QqBh2OdGzjkhGU65so3tjo7OH/5wWzqdpsls5QSJFWzKiTn/mD4KIgC+/oIQqKqKEBwbG8tmM5Is66YlIaH3c12bvv0Nw9D/aeBvUqn0r3/3O1Wt0Q1jblPif448J0Oxob6uNRb94/CZo2/+hhDh7NlznfPmCU6cg4IATMusqalBCHHbsRkoB69Tkdhr4tNmWM4AGImn1wupVIqaDYQICHBuXe0n2j+27M/nf/m++5tuWfLSkWP/2L9p+aeW5vOabuRD4dAHFy6v+MK9C1d8cfezB9sbEw11McuydL1EaQvljANBePXqVTcocT0lLo2bcRq2bbM2x6CQY6LlU74uAELIMIzHHvvnl1924v/I2ffHJ5KD99w19Ou3Em3tn/vsZwUg7Nz5L59Ztuz4KwdXr+5To2pzomH30L7vbvmHZCr5s5/9e+Oc5k98/Ob33363/0t37jv1bkiChAgQoWwm09t757Zt28LhMHU2lyUOhbhGgVPUcJJdT4rKMMoanG3biqJs2rTx3HnHiHFZNYdP/d/2rd9VCM5kMlE1ihCavDoZDslP7/3xEzse2fDA11YsW57JTtZEIxCgfL6w89Et8ab40796KxxSaFyDAF64cL6vb52qqm527Ouy3jRnymMo01wi7ntkhBBN06JqZCKZ7OzsTCQS2Xyu76t3Y4g2PLi5PEV89OEtpFRMxBswERK33Lp8ye07frqnDBHS332r7/Y7Fsbq685PpFuBgJ3UFU5MTPT1fe2mm26mZRrHZYXGvVPUc7kRey/Coq8rjG3b8+bdtG/fvs1/v9kw9Hi84epk+tB/PL9+7ZqQHPrF8eOdbR1/fe/duFAgoogtG6c//N5D3yyUStnstUXtHQP9D/7h1d+MT6QaGxqwbYfD4YsXLyYSjXv3PsHVG5z6vNxPlXtuGHINnVKhuZALC2wdZFmWJEnPPffcmjVrFi++o6TrV0avPP7Nr399/Rqho0WIKIKm4WIp987Z2ps/JiTqBdsWlJAwqQljqcnz55dueqggSfPa23XDLBTymcy1xx770bp166jxcODjlpQ0y2DrrSlW2VSC1vluwe9tLTLpkJ3P5x9++OGDBw+1traGwuFrk2lk6A99+4Huv+pFRV1B6PJ7I0p9LYoosaha1A19Mrt///MHf/kGikbrYjHDMFOpJABgz549n/98t+u43rLLzUa91x8+AlAgc+GIs0hvPblnz55nn/2viYnxhnjcskk6OWGahigIyz8+H9bHjGIRAPDO8GnNNHXTUOTQ3Ja5IVkqlkpnTp959JFH7n/gflVVqemzR80KYJqmY+sz0+nrbVbO691SmEri29z1EtqxY8fu3U+EQqHGxkbbxo6606mN991z7+q//NfdT73wyuvt7e2SJOmlYr5QSKfT0Wh0165dvb130tKU7uJbNtFkDmPMwuh0SIU+ArgnwDa1vUHRfUMP9/Tp093dPU4dUypgTOa2tIiiNDmZdjI2iOY2NxuGcfnyZUEgsVgdxoJlGc8fOPCpJUtc7jnAcesqNw64JuSyMcVbJQEIcZKimW1xLpITJwvKL126HCEUq6/XsllBIKOjo4qiNDX/WT6fVxQlc+1aLqc1NzdF1GhIUZAoXrp4CULh7bfflmWZTR/YMMpihiuAy5t/MscxJwQ0ylkoQAgNDGzRtFx9fb2mZWVFUdXo/Pm31NbWLVu65Dv9m1ff8yWEUGfnvNraGEJioVDIaVpLS4um5QcHB0VRpOm3tyDma18P/lCcnNFa5FJwzua4gTGGCL300s/ffPNXcxJxAMGV0Q9UtaaltVXLZld85tO7dv2bJDndKNM0fv6LoxAhSRSvJJOSJKnRaGNT07Fjr/T09KxatYoakrfL65qrN7RdBx6OLW/w4ph20yxnVwDeeOON8fEPG+rr9ZJeXx+vra01DVONRFZ/efWyZX8xPDzc09Mzf/78trZW2qgTRalYLBaKhXhDw8jIuRMnTlDIZrXu/YLB9QdWPNrohtVfgPpeSYTDYYREIoBMJpPL5WprawjBuq4XCoX+/v5XX/3v9evXt7W1l4olhKBhmo1NTaVSKa/lBQBkWVKUwO9M3ASHS/WnKpbyewgh35325kLel6x44XCoUChAAMLhcCqVtLFFBCzJ8rbtP9r7xJ67774rl9P6+jZkNQ065TKmios4SZtVLBbD4XCQprwliq8xV2qvc0fGyUBbggMDA5FI5PHHd+q6LoqiJEoYExEhy4IHDhxoa2vNZrNaTpNEpyVKwQRCePHCeTWi7tz5+IYNG2h7eEa/1q+lGajooFYMNXcW44KEFAThxRdffP311596aigWi5mm01Apl8hFx9EhpNV6uVXq6D+bzW7ZMtDV1dXT0+ObKnP4Q2HKvaHiEr4/VQDqzTRMnjp1yu1rUOt1Sbn80G7F4sWLaZaGZtL3NVpaclEBuNudWU4gKJXwto4pDgZN9iVOYwjxGIz3BFgBvEn1LD5QDTc0qrvXkkG3ISyCofLgGvq+m/re1bI4W0mAKm/dOJD1firmu4RbTvy+PKCDLZG9vN3gLaX3KH3DX9CFLGsqYGbI9/7FBR9W/bOYUFDDnt3S3TXoqwr2xo0rtbmuifcahosGbKPlevFY4WMP32c2kfaKxE3zJRhklsTDNBt2fFdVEsDLOlc3+06oIIBXBm/Z7vpSBS/iTCAQ+Hx7KpXF824QNNlXBYCpMSrv6H/BwY0g1n1PzLmNL9PkTLlKECMz+1G+c4JyoVlOwNsICHjmGfItcL3PFYa3N+o7raoTqPKTyqBOXmXKQgCdoOU3/uFrMF36DKcfqh1BepnV8FgMqDZ7qUyQZmkfdVmVtlQZlH0ypOoXs3NmDXlVZla+I+h+CQDw/3C5glYgcySuAAAAAElFTkSuQmCC'
-            try:
-                self._icon_img = tk.PhotoImage(data=_b64.b64decode(_ICON_B64))
-                self.iconphoto(True, self._icon_img)
-            except Exception:
-                pass
-        except Exception:
-            pass
-
-    def _configure_notebook_style(self):
-        try:
-            st = ttk.Style()
-            st.theme_use('clam')
-            st.configure('TNotebook', background=Theme.BG, borderwidth=0)
-            st.configure('TNotebook.Tab', padding=[16, 8], font=Theme.FONT_BODY_BOLD,
-                        background=Theme.CARD, foreground=Theme.TEXT)
-            st.map('TNotebook.Tab', background=[('selected', Theme.PRIMARY)],
-                   foreground=[('selected', 'white')])
-        except Exception:
-            pass
-
-    def _toggle_theme(self):
-        try:
-            if self._theme == 'light':
-                self._theme = 'dark'
-                Theme.set_dark()
-            else:
-                self._theme = 'light'
-                Theme.set_light()
-            DataManager.save('settings.json', {'theme': self._theme})
-            self._apply_theme()
-        except Exception:
-            pass
-
-    def _apply_theme(self):
-        try:
-            self.configure(bg=Theme.BG)
-            self._configure_notebook_style()
-            for w in getattr(self, '_home_theme_widgets', []):
-                try:
-                    icon = "☀" if self._theme == 'dark' else "☾"
-                    w.config(text=icon, bg=Theme.BG, fg=Theme.TEXT_SECONDARY)
-                except Exception:
-                    pass
-            for key in list(self.pages.keys()):
-                try:
-                    old = self.pages[key]
-                    old.destroy()
-                except Exception:
-                    pass
-                self.pages[key] = None
-            self.pages = {}
-            saved_page = self.current_page
-            self.home_frame.destroy()
-            self._build_home()
-            if saved_page and saved_page != 'home':
-                self._show_page(saved_page)
-            else:
-                self._show_page('home')
-                self._add_theme_btn_home()
-        except Exception:
-            pass
-
-    def _build_home(self):
-        self.home_frame = tk.Frame(self, bg=Theme.BG)
-        tk.Label(self.home_frame, text="闫 巴 工 具 箱", font=Theme.FONT_TITLE,
-                 bg=Theme.BG, fg=Theme.PRIMARY).pack(pady=(15, 3))
-        tk.Label(self.home_frame, text="— 便捷桌面小工具集 —",
-                 font=Theme.FONT_BODY, bg=Theme.BG, fg=Theme.TEXT_SECONDARY).pack(pady=(0, 12))
-
-        tools = [
-            ("🎲", "随机决定器", "自定义选项 / 抽签 / 抛硬币", Theme.ACCENT, 'decider'),
-            ("📝", "桌面便签", "置顶窗口 / 自动保存", Theme.WARNING, 'notes'),
-            ("⏱️", "计时工具", "番茄钟 / 自定义倒计时", Theme.PRIMARY, 'timer'),
-            ("📅", "纪念日管理", "录入日期 / 剩余天数", '#E91E63', 'anniversary'),
-            ("💰", "简易记账", "收支记录 / 极简流水", '#4CAF50', 'accounting'),
-            ("⏳", "时光胶囊", "写下文字 / 定时解锁", '#9C27B0', 'capsule'),
-        ]
-        for emoji, name, desc, color, key in tools:
-            card = tk.Frame(self.home_frame, bg=Theme.CARD, cursor='hand2')
-            card.pack(fill='x', padx=18, pady=4)
-            lf = tk.Frame(card, bg=Theme.CARD)
-            lf.pack(side='left', padx=10, pady=6)
-            tk.Label(lf, text=emoji, font=('Segoe UI Emoji', 22),
-                     bg=Theme.CARD).pack()
-            rf = tk.Frame(card, bg=Theme.CARD)
-            rf.pack(side='left', fill='x', expand=True, pady=6)
-            tk.Label(rf, text=name, font=Theme.FONT_BODY_BOLD,
-                     bg=Theme.CARD, fg=Theme.TEXT).pack(anchor='w')
-            tk.Label(rf, text=desc, font=Theme.FONT_SMALL,
-                     bg=Theme.CARD, fg=Theme.TEXT_MUTED).pack(anchor='w')
-            arrow = tk.Label(card, text="→", font=('Microsoft YaHei', 13),
-                               bg=Theme.CARD, fg=color)
-            arrow.pack(side='right', padx=10)
-            for w in [card, lf, rf, arrow] + list(lf.winfo_children()) + list(rf.winfo_children()):
-                w.bind('<Button-1>', lambda e, k=key: self._show_page(k))
-                def _card_enter(e, c=card):
-                    try:
-                        c.configure(bg='#E8EAF6' if self._theme == 'dark' else '#F5F5F5')
-                    except Exception:
-                        pass
-                def _card_leave(e, c=card):
-                    try:
-                        c.configure(bg=Theme.CARD)
-                    except Exception:
-                        pass
-                w.bind('<Enter>', _card_enter)
-                w.bind('<Leave>', _card_leave)
-
-        # 今日纪念日
-        try:
-            today_items = self._get_today_items()
-            if today_items:
-                tip = tk.Frame(self.home_frame, bg='#FFEBEE')
-                tip.pack(fill='x', padx=18, pady=(10, 6))
-                tk.Label(tip, text="📅 今日提醒", font=Theme.FONT_BODY_BOLD,
-                         bg='#FFEBEE', fg='#C62828').pack(anchor='w', padx=15, pady=(8, 2))
-                for item in today_items[:3]:
-                    tk.Label(tip, text=f"  • {item['name']} ({item['date']})",
-                             font=Theme.FONT_SMALL, bg='#FFEBEE',
-                             fg=Theme.TEXT_SECONDARY, anchor='w').pack(anchor='w', padx=20)
-                tk.Label(tip, text=f"共 {len(today_items)} 个纪念日临近",
-                         font=Theme.FONT_SMALL, bg='#FFEBEE',
-                         fg='#C62828').pack(anchor='w', padx=15, pady=(3, 8))
-        except Exception:
-            pass
-
-    def _get_today_items(self):
-        items = DataManager.load('anniversaries.json', {}).get('items', [])
-        today = datetime.date.today()
-        result = []
-        for item in items:
-            try:
-                date = datetime.datetime.strptime(item['date'], '%Y-%m-%d').date()
-                d = item.get('type', '每年重复')
-                if d == '仅一次':
-                    diff = (date - today).days
-                    if 0 <= diff <= 3:
-                        result.append(item)
-                elif d == '每周重复':
-                    diff = (date - today).days % 7
-                    if diff <= 1:
-                        result.append(item)
-                else:
-                    nd = date.replace(year=today.year)
-                    if nd < today:
-                        nd = date.replace(year=today.year + 1)
-                    diff = (nd - today).days
-                    if 0 <= diff <= 7:
-                        result.append(item)
-            except Exception:
-                pass
-        return result
-
-    def _show_page(self, key):
-        try:
-            # Destroy previous nav bar if exists
-            if hasattr(self, '_nav_bar') and self._nav_bar:
-                try:
-                    self._nav_bar.destroy()
-                except Exception:
-                    pass
-                self._nav_bar = None
-
-            if self.current_page and self.current_page != 'home':
-                p = self.pages.get(self.current_page)
-                if p:
-                    p.pack_forget()
-            if key == 'home':
-                self.title("闫巴工具箱 YBv1.1")
-                self.home_frame.pack(fill='both', expand=True)
-                self.current_page = 'home'
-                self._add_theme_btn_home()
-                return
-            self.home_frame.pack_forget()
-            if key not in self.pages:
-                cls = {'decider': DeciderPage, 'notes': NotePage,
-                        'timer': TimerPage, 'anniversary': AnniversaryPage,
-                        'accounting': AccountingPage, 'capsule': TimeCapsulePage}.get(key)
-                if cls:
-                    self.pages[key] = cls(self)
-            page = self.pages[key]
-            page.pack(fill='both', expand=True, pady=(28, 0))
-            self._nav_bar = tk.Frame(self, bg=Theme.BG, height=26)
-            self._nav_bar.place(x=0, y=0, relwidth=1, height=26)
-            nav_border = tk.Frame(self._nav_bar, bg=Theme.TEXT_MUTED, height=1)
-            nav_border.pack(side='bottom', fill='x')
-
-            back = RoundedButton(self._nav_bar, text="<", command=lambda: self._show_page('home'),
-                              width=36, height=22, radius=5, bg=Theme.BG,
-                              fg=Theme.TEXT)
-            back.place(x=2, y=2, width=36, height=22)
-
-            titles = {'decider': '随机决定器', 'notes': '桌面便签',
-                       'timer': '计时工具', 'anniversary': '纪念日管理',
-                       'accounting': '简易记账', 'capsule': '时光胶囊'}
-            tk.Label(self._nav_bar, text=titles.get(key, ''), font=Theme.FONT_BODY_BOLD,
-                     bg=Theme.BG, fg=Theme.TEXT).place(relx=0.5, rely=0.4, anchor='center')
-
-            theme_icon = "☀" if self._theme == 'dark' else "☾"
-            self._theme_btn = tk.Label(self._nav_bar, text=theme_icon,
-                                         font=('Segoe UI', 14),
-                                         bg=Theme.BG, fg=Theme.TEXT_SECONDARY,
-                                         cursor='hand2', padx=6)
-            self._theme_btn.place(relx=1.0, y=2, anchor='ne', height=24)
-            self._theme_btn.bind('<Button-1>', lambda e: self._toggle_theme())
-            self._theme_btn.bind('<Enter>', lambda e, b=self._theme_btn: b.config(fg=Theme.PRIMARY))
-            self._theme_btn.bind('<Leave>', lambda e, b=self._theme_btn: b.config(fg=Theme.TEXT_SECONDARY))
-
-            self.current_page = key
-            try:
-                AnimationEngine.fade_in(page, duration=300)
-            except Exception:
-                pass
-        except Exception as e:
-            messagebox.showerror("错误", f"页面加载失败: {e}")
-
-    def _add_theme_btn_home(self):
-        for w in getattr(self, '_home_theme_widgets', []):
-            try:
-                w.destroy()
-            except Exception:
-                pass
-        self._home_theme_widgets = []
-        icon = "☀" if self._theme == 'dark' else "☾"
-        btn = tk.Label(self, text=icon, font=('Segoe UI', 14),
-                          bg=Theme.BG, fg=Theme.TEXT_SECONDARY,
-                          cursor='hand2', padx=10, pady=5)
-        btn.place(relx=1.0, y=0, anchor='ne')
-        btn.bind('<Button-1>', lambda e: self._toggle_theme())
-        btn.bind('<Enter>', lambda e, b=btn: b.config(fg=Theme.PRIMARY))
-        btn.bind('<Leave>', lambda e, b=btn: b.config(fg=Theme.TEXT_SECONDARY))
-        self._home_theme_widgets.append(btn)
-
-    def add_note(self):
-        if 'notes' in self.pages:
-            self.pages['notes'].add_note()
-
-
-    def _check_capsules(self):
-        try:
-            data = DataManager.load('capsules.json', {})
-            capsules = data.get('capsules', [])
-            today = datetime.date.today()
-            due = []
-            for i, cap in enumerate(capsules):
-                if not cap.get('unlocked', False):
-                    try:
-                        ud = datetime.datetime.strptime(cap.get('unlock_date', ''), '%Y-%m-%d').date()
-                        if ud <= today:
-                            due.append((i, cap))
-                    except Exception:
-                        pass
-            if due:
-                for idx, cap in due:
-                    cap['unlocked'] = True
-                    capsules[idx] = cap
-                data['capsules'] = capsules
-                DataManager.save('capsules.json', data)
-                self._show_capsule_popup(due)
-        except Exception:
-            pass
-
-    def _show_capsule_popup(self, due_capsules):
-        try:
-            popup = tk.Toplevel(self)
-            popup.title("🔓 时光胶囊解锁")
-            popup.configure(bg='#F3E5F5')
-            popup.transient(self)
-            popup.grab_set()
-            popup.geometry("320x240")
-
-            tk.Label(popup, text="⏳", font=('Segoe UI Emoji', 36),
-                     bg='#F3E5F5').pack(pady=(15, 0))
-            tk.Label(popup, text="时光胶囊已解锁！", font=('Microsoft YaHei', 14, 'bold'),
-                     bg='#F3E5F5', fg=Theme.PRIMARY).pack(pady=5)
-
-            container = tk.Frame(popup, bg='#F3E5F5')
-            container.pack(fill='both', expand=True, padx=15, pady=5)
-
-            canvas = tk.Canvas(container, bg='#F3E5F5', bd=0, highlightthickness=0)
-            sb = ttk.Scrollbar(container, orient='vertical', command=canvas.yview)
-            inner = tk.Frame(canvas, bg='#F3E5F5')
-            inner.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
-            canvas.create_window((0, 0), window=inner, anchor='nw')
-            canvas.configure(yscrollcommand=sb.set)
-            canvas.pack(side='left', fill='both', expand=True)
-            sb.pack(side='right', fill='y')
-
-            for i, cap in due_capsules:
-                tk.Label(inner, text=f"解锁日期: {cap.get('unlock_date', '')}",
-                         font=Theme.FONT_SMALL, bg='#F3E5F5',
-                         fg=Theme.TEXT_SECONDARY).pack(anchor='w', pady=(5, 2))
-                tk.Label(inner, text=cap.get('text', ''), font=Theme.FONT_BODY,
-                         bg='#F3E5F5', fg=Theme.TEXT, wraplength=320,
-                         justify='left').pack(anchor='w', pady=(0, 8))
-
-            RoundedButton(popup, text="好的", command=popup.destroy,
-                          bg=Theme.PRIMARY, width=84, height=26).pack(pady=10)
-            popup.update_idletasks()
-            AnimationEngine.animate_popup(popup, duration=300)
-        except Exception:
-            messagebox.showinfo("时光胶囊", "有时光胶囊已解锁！")
-
-
-def global_exception(exc_type, exc_value, exc_tb):
-    try:
-        log_dir = DataManager.APP_DIR or os.path.join(os.path.expanduser('~'), '.yanba_data')
-        os.makedirs(log_dir, exist_ok=True)
-        with open(os.path.join(log_dir, 'error.log'), 'a', encoding='utf-8') as f:
-            f.write(f"\n{'='*50}\n时间: {datetime.datetime.now()}\n")
-            f.write(f"异常: {exc_type.__name__}: {exc_value}\n")
-            traceback.print_exception(exc_type, exc_value, exc_tb, file=f)
-    except Exception:
-        pass
-    try:
-        messagebox.showerror("程序异常", f"程序遇到错误，但不会退出：\n\n{exc_value}")
-    except Exception:
-        pass
-
-
+# =========================================================
+#  启动
+# =========================================================
 def main():
-    sys.excepthook = global_exception
-    app = YanbaApp()
-
-    def on_closing():
+    try:
+        app = App()
+        app.mainloop()
+    except Exception as e:
         try:
-            r = messagebox.askyesnocancel("退出确认",
-                "是否要退出闫巴工具箱？\n\n是: 退出  |  否: 最小化  |  取消: 返回")
-            if r is True:
-                app.destroy()
-            elif r is False:
-                app.iconify()
+            messagebox.showerror("启动失败", str(e))
         except Exception:
-            app.destroy()
+            print(f"启动失败: {e}", file=sys.stderr)
+        raise
 
-    app.protocol("WM_DELETE_WINDOW", on_closing)
-    app.mainloop()
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
